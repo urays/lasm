@@ -1,0 +1,4 @@
+## note: lasm syntax highlighting plugins in notepad++
+
+1. 'lasm.dark.xml' is recommended to use with the theme called 'Deep Black'
+2. 'lasm.light.xml' is recommended to use with the theme called 'Default(stylers.xml)'
