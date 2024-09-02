@@ -1,0 +1,195 @@
+//iterative modulo scheduling (IMS)
+ur::instruct* IMS_CORE::HightestPriorityOperation() {
+	BUG_INTER_C(PrioritizedList.empty(), "impossible?!");
+	auto* _Op = PrioritizedList.top();
+	PrioritizedList.pop();
+	return _Op;
+}
+tstamp::idtype IMS_CORE::CalculateEarlyStart(ur::instruct& _I) {
+	tstamp::idtype Estart, Lend;
+	std::tie(Estart, Lend) = calc_timeslot_in_table(_I, G_, ii_);
+	return Estart;
+}
+tstamp::idtype IMS_CORE::FindTimeSlot(ur::instruct& _I, int MinTime, int MaxTime) {
+	int CurrTime = MinTime;
+	int SchedSlot = TSTAMP_ID_ERR;
+	while (SchedSlot == TSTAMP_ID_ERR && CurrTime <= MaxTime) {
+		if (!uniops::test_pos(ttab_, utab_, _I, CurrTime)) {
+			CurrTime++;
+		}
+		else {
+			SchedSlot = CurrTime;
+		}
+	}
+	if (SchedSlot == TSTAMP_ID_ERR) {
+		int a = NeverScheduled[&_I];
+		int b = PrevScheduleTime[&_I];
+		if (NeverScheduled[&_I] || MinTime > PrevScheduleTime[&_I]) {
+			SchedSlot = MinTime;
+		}
+		else {
+			SchedSlot = PrevScheduleTime[&_I] + 1;
+		}
+	}
+	return SchedSlot;
+}
+std::map<const ur::instruct*, int> _HeightR;
+int IMS_CORE::getHeightR(const ur::instruct* _I) {
+	return _HeightR[_I];
+}
+void IMS_CORE::undo(ur::instruct* _I) {
+	PrioritizedList.push(_I);
+	uniops::undo_pos(ttab_, utab_, *_I);
+}
+bool IMS_CORE::Schedule(ur::instruct& _I, tstamp::idtype Timeslot) {
+	//resource conflict.
+	std::vector<ur::instruct*> _reps;
+	if (!uniops::test_pos(ttab_, utab_, _I, Timeslot, &_reps)) {
+		for (const auto* _p: _reps) {
+			undo(const_cast<ur::instruct*>(_p));
+		}
+	}
+	//dependence constraits.
+	std::vector<std::pair<const SDGNode*, const SDGEdge*>> _prec, _succ;
+	G_.prec(&_I,
+		[](const SDGNode& _N) {return _N.I().lln() != TSTAMP_ID_ERR; },
+		[](const SDGEdge& _E) {
+			return !_E.dis();
+		}
+	, &_prec);
+	G_.succ(&_I,
+		[](const SDGNode& _N) {return _N.I().lln() != TSTAMP_ID_ERR; },
+		[](const SDGEdge& _E) {
+			return !_E.dis();
+		}
+	, & _succ);
+
+	opset_less<const ur::instruct*> _Is;
+	for (const auto& _NE : _prec) {
+		const ur::instruct* _X = &_NE.first->I();
+		const interval_t _r = uniops::calc_Pij(*_X, _I, *_NE.second, ii_);
+		if (!_r.contain(Timeslot)) {
+			_Is += _X;
+		}
+	}
+	for (const auto& _NE : _succ) {
+		const ur::instruct* _X = &_NE.first->I();
+		const interval_t _r = uniops::calc_Pjk(_I, *_X, *_NE.second, ii_);
+		if (!_r.contain(Timeslot)) {
+			_Is += _X;
+		}
+	}
+
+	for (const auto* _p : _Is) {
+		undo(const_cast<ur::instruct*>(_p));
+	}
+
+	if (!uniops::test_set_pos(ttab_, utab_, _I, Timeslot)) {
+		//BUG_INTER("IMPOSSIBLE?!");
+		return false;
+	}
+	NeverScheduled[&_I] = false;
+	PrevScheduleTime[&_I] = _I.lln();
+	return true;
+}
+
+bool IMS_CORE::IterativeSchedule() {
+	//II, Budget
+	for (auto* _I : START) {
+		if (!uniops::test_set_pos(ttab_, utab_, *_I, { 0, 999 }, true)) {
+			BUG_INTER("IMPOSSIBLE?!");
+		}
+		NeverScheduled[_I] = false;
+		PrevScheduleTime[_I] = _I->lln();
+	}
+	while (!PrioritizedList.empty() and Budget > 0) {
+		ur::instruct* _Tar = HightestPriorityOperation();
+		//std::cout << _Tar->tag() << std::endl;
+		tstamp::idtype Estart = CalculateEarlyStart(*_Tar);
+		tstamp::idtype MinTime = Estart;
+		tstamp::idtype MaxTime = MinTime + ii_ - 1;
+		tstamp::idtype Timeslot = FindTimeSlot(*_Tar, MinTime, MaxTime);
+		ttab_.print(std::clog);
+		if (!Schedule(*_Tar, Timeslot)) {
+			return false;
+		}
+		Budget--;
+	}
+
+	return PrioritizedList.empty();
+}
+
+bool IMS_CORE::SCHEDULE() {
+	const SDG& _G = G_;
+	Budget = mis_.size() * 2;
+	START.clear();
+	PrioritizedList = {};
+	NeverScheduled.clear();
+	for (const auto& I : mis_) {
+		if (!_G.prec(I.get(),
+			[](const SDGNode& _N) { return true; },
+			[](const SDGEdge& _E) {return !_E.dis(); },
+			nullptr)) {
+			START.push_back(I.get());
+			std::stable_partition(START.begin(), START.end(),
+				[&_G](const ur::instruct* _I) {
+					return _G(_I)->tpi().is_crucial;
+				});
+		}
+		else {
+			PrioritizedList.push(I.get());
+			NeverScheduled[I.get()] = true;
+		}
+	}
+	if (!IterativeSchedule()) {
+		return false;
+	}
+	return true;
+}
+//Method Registration
+class IMS_CORE final { 
+	static int getHeightR(const ur::instruct* _I);
+	struct _cmp {
+		bool operator() (const ur::instruct* _lhs, const ur::instruct* _rhs) {
+			return getHeightR(_lhs) < getHeightR(_rhs);
+		}
+	};
+	std::vector<ur::instruct*> START;
+	std::priority_queue<ur::instruct*, std::vector<ur::instruct*>, _cmp> PrioritizedList;
+	int Budget;
+	std::map<const ur::instruct*, bool> NeverScheduled;
+	std::map<const ur::instruct*, tstamp::idtype> PrevScheduleTime;
+
+	ur::instruct* HightestPriorityOperation();
+	tstamp::idtype CalculateEarlyStart(ur::instruct&);
+	tstamp::idtype FindTimeSlot(ur::instruct&, int MinTime, int MaxTime);
+	bool IterativeSchedule();
+	bool Schedule(ur::instruct&, tstamp::idtype);
+	void undo(ur::instruct*);
+}
+//
+static void IMS(const ur::iblock_loop& _obj, const ur::argmgr& _amgr,
+	const option& _opts, tmpouts& _outs);
+void loop::IMS(const ur::iblock_loop& _obj, const ur::argmgr& _amgr,
+	const option& _opts, tmpouts& _outs) {
+	IMS::preparms _parms;
+	std::string _err;
+	if (!IMS::init(_obj, _amgr,
+		_opts.MIN_II, _opts.MAX_II,
+		_parms, _err)) {
+		_CONSOLE_MESSAGE("IMS:SKIP", _err);
+		return;
+	}
+#ifdef __dump_print
+	std::clog << "[IMS:RUNNING:" << _obj.tag() << "]\n";
+	_parms.print(std::clog);
+#endif
+	IMS::run(_obj, _amgr, _parms, _outs);
+}
+//
+bool ims = false;
+_os << "  --ims              : \n";
+_ias.opts.ims = CML.flag("--ims");
+if (_opts.ims) {
+	_lbox.emplace_back(&sch::loop::IMS);
+}

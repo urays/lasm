@@ -1,0 +1,139 @@
+//top-down list scheduler, low-latency-first scheduling
+class TDLS final {
+	const uint16_t kc_;
+	tstamp_table ttab_;
+	tstamp::idtype ids_;
+	tstamp::idtype ide_;
+	unituse_table utab_;
+	const ur::argmgr& amgr_; // local varables manager
+	std::vector<ur::instruct*> mis_;
+public:
+	TDLS(std::vector<std::unique_ptr<ur::instruct>>& _mis, const ur::argmgr& _amgr)
+		: kc_(ur::ms::funit::size()), ttab_(-1, kc_),
+		ids_(TSTAMP_ID_ERR), ide_(TSTAMP_ID_ERR),
+		utab_(ttab_), amgr_(_amgr) {
+		BUG_INTER_C(_mis.empty(), "_mis can not be empty");
+		for (auto& _I : _mis) {
+			mis_.push_back(_I.get());
+		}
+	}
+	~TDLS() {}
+
+	void run_lowlatfirst();
+
+	std::list<std::unique_ptr<ur::iblock>> release();
+};
+void TDLS::run_lowlatfirst() {
+	auto _G = SDG::create(mis_, amgr_, false, true);
+
+	uniops::top_down(*_G, mis_, [](SDGNode* _lhs, SDGNode* _rhs) {
+		return _lhs->I().maxcyc() > _rhs->I().maxcyc();
+		});
+
+	for (auto _I : mis_) {
+		const auto _inv = uniops::calc_timeslot_in_list(*_I, *_G);
+		for (tstamp::idtype _p = std::max(_inv.s(), 0); _p <= _inv.e(); ++_p) {
+			if (uniops::test_set_pos(ttab_, utab_, *_I, _p)) {
+				break;
+			}
+		}
+		BUG_INTER_C(_I->lln() == TSTAMP_ID_ERR, "impossible?!");
+	}
+
+	while (ttab_.back().empty()) {
+		ttab_.pop_back();
+	}
+	const uint16_t _idel_max_cyc = ur::ms::instruct_set::statis()->maxcyc;
+	const tstamp::idtype _eid = ttab_.ide();
+	tstamp::idtype _chkid = _eid - _idel_max_cyc + 1;
+	tstamp::idtype _maxid = _eid;
+	_chkid = std::max(_chkid, ttab_.ids());
+	for (; _chkid <= _eid; ++_chkid) {
+		const tstamp& _T = ttab_[_chkid];
+		if (_T.empty()) { continue; }
+		for (uint16_t i = 0; i < kc_; ++i) {
+			const auto _ii = _T[i];
+			if (_ii) {
+				_maxid = std::max(_chkid + _ii->fucyc() - 1, _maxid);
+			}
+		}
+	}
+	ttab_.extsize_to_fit(_maxid);
+
+	ids_ = ttab_.ids();
+	ide_ = ttab_.ide();
+}
+std::list<std::unique_ptr<ur::iblock>> TDLS::release() {
+	std::list<std::unique_ptr<ur::iblock>> _bs;
+	for (tstamp::idtype i = ids_; i <= ide_; ++i) {
+		_bs.push_back(ttab_[i].to_beat());
+	}
+	return _bs;
+}
+//Method Registration
+static void TDLS_min_lat(const ur::iblock_base& _obj, const ur::argmgr& _amgr,
+	const option& _opts, tmpouts& _outs);
+static void TDLS_min_lat(const ur::iblock_loop& _obj, const ur::argmgr& _amgr,
+	const option& _opts, tmpouts& _outs);
+void base::TDLS_min_lat(const ur::iblock_base& _obj, const ur::argmgr& _amgr,
+	const option& _opts, tmpouts& _outs)
+{
+	if (_obj.empty() ||
+		_obj.is_bar() || _obj.is_beat()) {
+		return;
+	}
+
+	std::vector<std::unique_ptr<ur::instruct>> _mis;
+	_obj.fetch_insts([&_mis](const ur::instruct& _I) {
+		_mis.push_back(std::make_unique<ur::instruct>(_I));
+		});
+	sch::TDLS _sched(_mis, _amgr);
+	_sched.run_lowlatfirst();
+
+	auto _beats = _sched.release();
+	BUG_INTER_C(_beats.empty(), "impossible?!");
+	tmpouts_meta _tom(std::list<const ur::iblock*>(1, &_obj));
+	_tom.push(std::move(_beats), _amgr);
+	_tom.finalize("BASE:TDLS");
+	_outs.insert(std::move(_tom));
+}
+
+void loop::TDLS_min_lat(const ur::iblock_loop& _obj, const ur::argmgr& _amgr,
+	const option& _opts, tmpouts& _outs)
+{
+	//only loops with one base block(not beat) are supported
+	if (_obj.size() != 1U) {
+		return;
+	}
+	const ur::iblock* _tmpb = _obj.front();
+	if (!_tmpb->is_base() || _tmpb->is_beat()) {
+		return;
+	}
+	std::vector<std::unique_ptr<ur::instruct>> _mis;
+	_obj.fetch_insts([&_mis](const ur::instruct& _I) {
+		_mis.push_back(std::make_unique<ur::instruct>(_I));
+		});
+	sch::TDLS _sched(_mis, _amgr);
+	_sched.run_lowlatfirst();
+	auto _beats = _sched.release();
+	BUG_INTER_C(_beats.empty(), "impossible?!");
+
+	std::unique_ptr<ur::iblock_loop> _lp = std::make_unique<ur::iblock_loop>();
+	_lp->set_name(_obj.name());
+	_lp->set_it(_obj.it());
+	for (auto& _b : _beats) {
+		_lp->push_back(std::move(_b));
+	}
+	tmpouts_meta _tom(std::list<const ur::iblock*>(1, &_obj));
+	_tom.push(std::move(_lp), _amgr);
+	_tom.finalize("LOOP:TDLS");
+	_outs.insert(std::move(_tom));
+}
+
+bool tdls = false;
+_ias.opts.tdls = CML.flag("--tdls");
+_os << "  --tdls             : Enable Top-Down List Scheduler.\n";
+if (_opts.tdls) {
+	_lbox.emplace_back(&sch::loop::TDLS_min_lat);
+	_bbox.emplace_back(&sch::base::TDLS_min_lat);
+}
