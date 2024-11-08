@@ -1,0 +1,642 @@
+<!DOCTYPE html><html><head>
+      <title>lasm-ir</title>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      
+      <link rel="stylesheet" href="file:///c:\Users\hzhon\.vscode\extensions\shd101wyy.markdown-preview-enhanced-0.8.14\crossnote\dependencies\katex\katex.min.css">
+      
+      
+      
+      
+      
+      <style>
+      code[class*=language-],pre[class*=language-]{color:#333;background:0 0;font-family:Consolas,"Liberation Mono",Menlo,Courier,monospace;text-align:left;white-space:pre;word-spacing:normal;word-break:normal;word-wrap:normal;line-height:1.4;-moz-tab-size:8;-o-tab-size:8;tab-size:8;-webkit-hyphens:none;-moz-hyphens:none;-ms-hyphens:none;hyphens:none}pre[class*=language-]{padding:.8em;overflow:auto;border-radius:3px;background:#f5f5f5}:not(pre)>code[class*=language-]{padding:.1em;border-radius:.3em;white-space:normal;background:#f5f5f5}.token.blockquote,.token.comment{color:#969896}.token.cdata{color:#183691}.token.doctype,.token.macro.property,.token.punctuation,.token.variable{color:#333}.token.builtin,.token.important,.token.keyword,.token.operator,.token.rule{color:#a71d5d}.token.attr-value,.token.regex,.token.string,.token.url{color:#183691}.token.atrule,.token.boolean,.token.code,.token.command,.token.constant,.token.entity,.token.number,.token.property,.token.symbol{color:#0086b3}.token.prolog,.token.selector,.token.tag{color:#63a35c}.token.attr-name,.token.class,.token.class-name,.token.function,.token.id,.token.namespace,.token.pseudo-class,.token.pseudo-element,.token.url-reference .token.variable{color:#795da3}.token.entity{cursor:help}.token.title,.token.title .token.punctuation{font-weight:700;color:#1d3e81}.token.list{color:#ed6a43}.token.inserted{background-color:#eaffea;color:#55a532}.token.deleted{background-color:#ffecec;color:#bd2c00}.token.bold{font-weight:700}.token.italic{font-style:italic}.language-json .token.property{color:#183691}.language-markup .token.tag .token.punctuation{color:#333}.language-css .token.function,code.language-css{color:#0086b3}.language-yaml .token.atrule{color:#63a35c}code.language-yaml{color:#183691}.language-ruby .token.function{color:#333}.language-markdown .token.url{color:#795da3}.language-makefile .token.symbol{color:#795da3}.language-makefile .token.variable{color:#183691}.language-makefile .token.builtin{color:#0086b3}.language-bash .token.keyword{color:#0086b3}pre[data-line]{position:relative;padding:1em 0 1em 3em}pre[data-line] .line-highlight-wrapper{position:absolute;top:0;left:0;background-color:transparent;display:block;width:100%}pre[data-line] .line-highlight{position:absolute;left:0;right:0;padding:inherit 0;margin-top:1em;background:hsla(24,20%,50%,.08);background:linear-gradient(to right,hsla(24,20%,50%,.1) 70%,hsla(24,20%,50%,0));pointer-events:none;line-height:inherit;white-space:pre}pre[data-line] .line-highlight:before,pre[data-line] .line-highlight[data-end]:after{content:attr(data-start);position:absolute;top:.4em;left:.6em;min-width:1em;padding:0 .5em;background-color:hsla(24,20%,50%,.4);color:#f4f1ef;font:bold 65%/1.5 sans-serif;text-align:center;vertical-align:.3em;border-radius:999px;text-shadow:none;box-shadow:0 1px #fff}pre[data-line] .line-highlight[data-end]:after{content:attr(data-end);top:auto;bottom:.4em}html body{font-family:'Helvetica Neue',Helvetica,'Segoe UI',Arial,freesans,sans-serif;font-size:16px;line-height:1.6;color:#333;background-color:#fff;overflow:initial;box-sizing:border-box;word-wrap:break-word}html body>:first-child{margin-top:0}html body h1,html body h2,html body h3,html body h4,html body h5,html body h6{line-height:1.2;margin-top:1em;margin-bottom:16px;color:#000}html body h1{font-size:2.25em;font-weight:300;padding-bottom:.3em}html body h2{font-size:1.75em;font-weight:400;padding-bottom:.3em}html body h3{font-size:1.5em;font-weight:500}html body h4{font-size:1.25em;font-weight:600}html body h5{font-size:1.1em;font-weight:600}html body h6{font-size:1em;font-weight:600}html body h1,html body h2,html body h3,html body h4,html body h5{font-weight:600}html body h5{font-size:1em}html body h6{color:#5c5c5c}html body strong{color:#000}html body del{color:#5c5c5c}html body a:not([href]){color:inherit;text-decoration:none}html body a{color:#08c;text-decoration:none}html body a:hover{color:#00a3f5;text-decoration:none}html body img{max-width:100%}html body>p{margin-top:0;margin-bottom:16px;word-wrap:break-word}html body>ol,html body>ul{margin-bottom:16px}html body ol,html body ul{padding-left:2em}html body ol.no-list,html body ul.no-list{padding:0;list-style-type:none}html body ol ol,html body ol ul,html body ul ol,html body ul ul{margin-top:0;margin-bottom:0}html body li{margin-bottom:0}html body li.task-list-item{list-style:none}html body li>p{margin-top:0;margin-bottom:0}html body .task-list-item-checkbox{margin:0 .2em .25em -1.8em;vertical-align:middle}html body .task-list-item-checkbox:hover{cursor:pointer}html body blockquote{margin:16px 0;font-size:inherit;padding:0 15px;color:#5c5c5c;background-color:#f0f0f0;border-left:4px solid #d6d6d6}html body blockquote>:first-child{margin-top:0}html body blockquote>:last-child{margin-bottom:0}html body hr{height:4px;margin:32px 0;background-color:#d6d6d6;border:0 none}html body table{margin:10px 0 15px 0;border-collapse:collapse;border-spacing:0;display:block;width:100%;overflow:auto;word-break:normal;word-break:keep-all}html body table th{font-weight:700;color:#000}html body table td,html body table th{border:1px solid #d6d6d6;padding:6px 13px}html body dl{padding:0}html body dl dt{padding:0;margin-top:16px;font-size:1em;font-style:italic;font-weight:700}html body dl dd{padding:0 16px;margin-bottom:16px}html body code{font-family:Menlo,Monaco,Consolas,'Courier New',monospace;font-size:.85em;color:#000;background-color:#f0f0f0;border-radius:3px;padding:.2em 0}html body code::after,html body code::before{letter-spacing:-.2em;content:'\00a0'}html body pre>code{padding:0;margin:0;word-break:normal;white-space:pre;background:0 0;border:0}html body .highlight{margin-bottom:16px}html body .highlight pre,html body pre{padding:1em;overflow:auto;line-height:1.45;border:#d6d6d6;border-radius:3px}html body .highlight pre{margin-bottom:0;word-break:normal}html body pre code,html body pre tt{display:inline;max-width:initial;padding:0;margin:0;overflow:initial;line-height:inherit;word-wrap:normal;background-color:transparent;border:0}html body pre code:after,html body pre code:before,html body pre tt:after,html body pre tt:before{content:normal}html body blockquote,html body dl,html body ol,html body p,html body pre,html body ul{margin-top:0;margin-bottom:16px}html body kbd{color:#000;border:1px solid #d6d6d6;border-bottom:2px solid #c7c7c7;padding:2px 4px;background-color:#f0f0f0;border-radius:3px}@media print{html body{background-color:#fff}html body h1,html body h2,html body h3,html body h4,html body h5,html body h6{color:#000;page-break-after:avoid}html body blockquote{color:#5c5c5c}html body pre{page-break-inside:avoid}html body table{display:table}html body img{display:block;max-width:100%;max-height:100%}html body code,html body pre{word-wrap:break-word;white-space:pre}}.markdown-preview{width:100%;height:100%;box-sizing:border-box}.markdown-preview ul{list-style:disc}.markdown-preview ul ul{list-style:circle}.markdown-preview ul ul ul{list-style:square}.markdown-preview ol{list-style:decimal}.markdown-preview ol ol,.markdown-preview ul ol{list-style-type:lower-roman}.markdown-preview ol ol ol,.markdown-preview ol ul ol,.markdown-preview ul ol ol,.markdown-preview ul ul ol{list-style-type:lower-alpha}.markdown-preview .newpage,.markdown-preview .pagebreak{page-break-before:always}.markdown-preview pre.line-numbers{position:relative;padding-left:3.8em;counter-reset:linenumber}.markdown-preview pre.line-numbers>code{position:relative}.markdown-preview pre.line-numbers .line-numbers-rows{position:absolute;pointer-events:none;top:1em;font-size:100%;left:0;width:3em;letter-spacing:-1px;border-right:1px solid #999;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.markdown-preview pre.line-numbers .line-numbers-rows>span{pointer-events:none;display:block;counter-increment:linenumber}.markdown-preview pre.line-numbers .line-numbers-rows>span:before{content:counter(linenumber);color:#999;display:block;padding-right:.8em;text-align:right}.markdown-preview .mathjax-exps .MathJax_Display{text-align:center!important}.markdown-preview:not([data-for=preview]) .code-chunk .code-chunk-btn-group{display:none}.markdown-preview:not([data-for=preview]) .code-chunk .status{display:none}.markdown-preview:not([data-for=preview]) .code-chunk .output-div{margin-bottom:16px}.markdown-preview .md-toc{padding:0}.markdown-preview .md-toc .md-toc-link-wrapper .md-toc-link{display:inline;padding:.25rem 0}.markdown-preview .md-toc .md-toc-link-wrapper .md-toc-link div,.markdown-preview .md-toc .md-toc-link-wrapper .md-toc-link p{display:inline}.markdown-preview .md-toc .md-toc-link-wrapper.highlighted .md-toc-link{font-weight:800}.scrollbar-style::-webkit-scrollbar{width:8px}.scrollbar-style::-webkit-scrollbar-track{border-radius:10px;background-color:transparent}.scrollbar-style::-webkit-scrollbar-thumb{border-radius:5px;background-color:rgba(150,150,150,.66);border:4px solid rgba(150,150,150,.66);background-clip:content-box}html body[for=html-export]:not([data-presentation-mode]){position:relative;width:100%;height:100%;top:0;left:0;margin:0;padding:0;overflow:auto}html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{position:relative;top:0;min-height:100vh}@media screen and (min-width:914px){html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{padding:2em calc(50% - 457px + 2em)}}@media screen and (max-width:914px){html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{padding:2em}}@media screen and (max-width:450px){html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{font-size:14px!important;padding:1em}}@media print{html body[for=html-export]:not([data-presentation-mode]) #sidebar-toc-btn{display:none}}html body[for=html-export]:not([data-presentation-mode]) #sidebar-toc-btn{position:fixed;bottom:8px;left:8px;font-size:28px;cursor:pointer;color:inherit;z-index:99;width:32px;text-align:center;opacity:.4}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] #sidebar-toc-btn{opacity:1}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc{position:fixed;top:0;left:0;width:300px;height:100%;padding:32px 0 48px 0;font-size:14px;box-shadow:0 0 4px rgba(150,150,150,.33);box-sizing:border-box;overflow:auto;background-color:inherit}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc::-webkit-scrollbar{width:8px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc::-webkit-scrollbar-track{border-radius:10px;background-color:transparent}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc::-webkit-scrollbar-thumb{border-radius:5px;background-color:rgba(150,150,150,.66);border:4px solid rgba(150,150,150,.66);background-clip:content-box}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc a{text-decoration:none}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc{padding:0 16px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link{display:inline;padding:.25rem 0}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link div,html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link p{display:inline}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper.highlighted .md-toc-link{font-weight:800}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .markdown-preview{left:300px;width:calc(100% - 300px);padding:2em calc(50% - 457px - 300px / 2);margin:0;box-sizing:border-box}@media screen and (max-width:1274px){html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .markdown-preview{padding:2em}}@media screen and (max-width:450px){html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .markdown-preview{width:100%}}html body[for=html-export]:not([data-presentation-mode]):not([html-show-sidebar-toc]) .markdown-preview{left:50%;transform:translateX(-50%)}html body[for=html-export]:not([data-presentation-mode]):not([html-show-sidebar-toc]) .md-sidebar-toc{display:none}
+/* Please visit the URL below for more information: */
+/*   https://shd101wyy.github.io/markdown-preview-enhanced/#/customize-css */
+
+      </style>
+      <!-- The content below will be included at the end of the <head> element. --><script type="text/javascript">
+  document.addEventListener("DOMContentLoaded", function () {
+    // your code here
+  });
+</script></head><body for="html-export">
+    
+    
+      <div class="crossnote markdown-preview  ">
+      
+<h2 id="-hello-lasm-ir">😎 Hello! LASM IR </h2>
+<blockquote>
+<p>Latest update: 2024-11-5</p>
+</blockquote>
+<h3 id="1-what-is-lasm-ir">1 What Is LASM IR? </h3>
+<p>To reduce the complexity of VLIW assembly while maintaining its ability to implement deep optimizations, we specify a set of assembly-like syntax rules and a concise set of pseudo operations, which are uniformly named LASM IR. Based on LASM IR, LASM compiles not only subprogram libraries but also full-scale programs with multi-nested loops and function calls. The LASM IR-described program, also called the LA program. Here is an example (_axpby.la):</p>
+<p><img src="img/sample_code.jpg" alt="_axpby"></p>
+<h4 id="plain-text-representation">Plain-Text Representation </h4>
+<p>LASM IR offers <strong>robust</strong> hardware manipulation capabilities and is more <strong>user-friendly</strong> than VLIW assembly language. It provides a set of assembly-like syntax rules and <strong>concise</strong> pseudo-operations, enabling efficient program description. By supporting multiple file references, function calls, and return mechanisms, LASM IR allows complex programs to be broken down into multiple functions. With LASM IR, VLIW programmers no longer need to manage instruction parallelism, functional unit allocation, instruction latency, or register allocation, focusing solely on instruction semantics and program design. Additionally, programmers can use variables without additional declarations (in other words, use-as-declaration) and have the <strong>flexibility</strong> to specify physical registers, functional units, and inter-instruction parallelism directly.</p>
+<h4 id="in-memory-representation">In-Memory Representation </h4>
+<p>Programs written in LASM IR are eventually parsed into a single, persistent memory structure called LACTX, which remains active throughout the LASM optimization pipeline. Before entering the LASM scheduling framework, LACTX undergoes a code refinement phase aimed at mitigating the adverse effects of any user-ignored programming behaviors that might hinder further optimizations. LASM‘s refinement techniques primarily focus on eliminating redundant operations and simplifying the program structure. These techniques include inline function expansion, inter-procedural optimization, context-aware call-point movement (to reduce runtime stack traffic), dead code elimination (DCE), and loop invariant code motion (LICM).<br>
+Here are all the block types in LACTX:</p>
+<pre data-role="codeBlock" data-info="c++" class="language-cpp c++"><code><span class="token keyword keyword-class">class</span> <span class="token class-name">iblock</span> <span class="token operator">:</span> <span class="token base-clause"><span class="token keyword keyword-public">public</span> mem<span class="token double-colon punctuation">::</span><span class="token class-name">address</span></span> <span class="token punctuation">{</span> <span class="token comment">//All kinds of iblocks.</span>
+<span class="token keyword keyword-public">public</span><span class="token operator">:</span>
+	<span class="token keyword keyword-enum">enum</span> <span class="token keyword keyword-class">class</span> <span class="token class-name">Kind</span> <span class="token operator">:</span><span class="token base-clause"><span class="token keyword keyword-uint8_t">uint8_t</span></span> <span class="token punctuation">{</span>
+		ROOT<span class="token punctuation">,</span> <span class="token comment">//                                   (all phase)</span>
+		ULAB<span class="token punctuation">,</span> <span class="token comment">// to be LAB or LOOP.                (building phase)</span>
+		LAB<span class="token punctuation">,</span>  <span class="token comment">//                                   (all phase)</span>
+		LOOP<span class="token punctuation">,</span> <span class="token comment">//                                   (all phase)</span>
+		BASE<span class="token punctuation">,</span> <span class="token comment">// use to store instructs            (all phase)</span>
+		TBD<span class="token punctuation">,</span>  <span class="token comment">//                                   (building phase)</span>
+		SWAP<span class="token punctuation">,</span> <span class="token comment">// used to store blocks temporarily. (optimization phase)</span>
+	<span class="token punctuation">}</span><span class="token punctuation">;</span>
+    <span class="token comment">//...</span>
+<span class="token punctuation">}</span>
+</code></pre><h3 id="2-plain-text-symbol">2 Plain-Text Symbol </h3>
+<ol>
+<li><strong>Predefined Symbol</strong> involves machine mnemonics defined by the user-edited machine description file, representing instructions, registers, and functional units, as well as system-defined symbols, including pseudo-operations, 23 types of operators, and a parallel symbol (i.e., '|').<br>
+Pseudo-operations are marked by the character '@' and pertain to <a href="#J-segment">SEGMENT</a> (@sect,@usect),  <a href="#J-storagedatatype">STORAGE-DATATYPE</a> (@bN,@bh,@bf,@bd), <a href="#J-innerfunction">INNER-FUNCTION</a> (@func, @main, @ret, label:) and <a href="#J-interfunction">INTER-FUNCTION</a> (@import,@call,@icall) and <a href="#J-utility">UTILITY</a> (@asg,@dreg,@align,@mdep,@icp,@bar). @import also helps users to compile specific functions from large kernel libraries. (See <a href="#J-pseudo">4 Pseudo Operation</a> for details)</li>
+<li><strong>Address Indicator</strong> is a class of symbols used to mark program addresses that are mapped to real physical addresses after symbol relocation. It consists of three types: memory first address (defined by @sect or @usect), function name (defined by @func or @main), and inner-function label (label: ).</li>
+<li><strong>Constant</strong> is categorized as ordinary or symbolic. Ordinary constants include basic constants, strings, and constant expressions. Symbolic constants are symbols defined by datatype pseudo-operations (@bN, @bh, @bf, @bd) to represent ordinary constants or address indicator's properties. Notably, only decimal integer constants have a numeric meaning, while other integer constants are treated as 256-bit complements. Half-precision, single-precision, and double-precision constants adhere to the IEEE754 standard in machine code. (See <a href="#J-constant">3 Constant</a> for details)</li>
+<li><strong>Variable</strong> is a class of symbols used to represent a piece of data that can be mapped to memory. Variables are categorized as single variables (e.g., old), pairs of variables (e.g., old:even), and variable expressions (e.g., (old+even) &gt;&gt;1. Each variable expression is ultimately translated into a set of instructions.</li>
+<li><strong>Substitution Symbol</strong> (defined by @asg) is a class of symbols used to represent other symbols. One of its uses is to specify physical registers for single variables or pairs of variables in a program.</li>
+</ol>
+<p><span id="J-constant"></span></p>
+<h3 id="3-constant">3 Constant </h3>
+<h4 id="31-basic-constant">3.1 Basic Constant </h4>
+<p>Basic constants include integer constants, floating-point constants, and character constants.LASM reserves 64 bits for each basic constant. Basic constants are not sign-extensible. If a constant is specified with fewer than 64 bits, LASM calibrates its value from the right, padding any unspecified bits with zeros. If a constant is specified with more than 64 bits, LASM will simply truncate it, taking only the lower 64 bits (the truncation will be fed back to the user in the form of a warning).Floating-point constants in non-machine-code formats are automatically expressed as 64-bit double-precision following the IEEE754 standard.</p>
+<h5 id="311-integer-constant">3.1.1 Integer Constant </h5>
+<pre data-role="codeBlock" data-info="python" class="language-python python"><code><span class="token operator">//</span><span class="token punctuation">:</span><span class="token punctuation">)</span> Brief
+Integer constants come <span class="token keyword keyword-in">in</span> four numeric systems<span class="token punctuation">:</span> binary<span class="token punctuation">,</span> octal<span class="token punctuation">,</span> decimal<span class="token punctuation">,</span> <span class="token keyword keyword-and">and</span> hexadecimal<span class="token punctuation">.</span> 
+Only decimal constants have numeric meanings<span class="token punctuation">,</span> <span class="token builtin">all</span> other integer constants are treated <span class="token keyword keyword-as">as</span> <span class="token number">64</span><span class="token operator">-</span>bit complements<span class="token punctuation">.</span> 
+The <span class="token builtin">range</span> of decimal constants <span class="token keyword keyword-is">is</span> <span class="token operator">-</span><span class="token number">9</span><span class="token punctuation">,</span><span class="token number">223</span><span class="token punctuation">,</span><span class="token number">372</span><span class="token punctuation">,</span><span class="token number">036</span><span class="token punctuation">,</span><span class="token number">854</span><span class="token punctuation">,</span><span class="token number">775</span><span class="token punctuation">,</span><span class="token number">808</span> <span class="token operator">~</span> <span class="token number">18</span><span class="token punctuation">,</span><span class="token number">446</span><span class="token punctuation">,</span><span class="token number">744</span><span class="token punctuation">,</span><span class="token number">073</span><span class="token punctuation">,</span><span class="token number">709</span><span class="token punctuation">,</span><span class="token number">551</span><span class="token punctuation">,</span><span class="token number">615.</span>
+</code></pre><table>
+<thead>
+<tr>
+<th>Numeral system</th>
+<th>Format</th>
+<th>Meaning</th>
+<th>Examples</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Binary</td>
+<td>^0[bB][10]+</td>
+<td>Complement</td>
+<td>0b101、0B1001</td>
+</tr>
+<tr>
+<td>Octal</td>
+<td>^0[oO][0-7]+</td>
+<td>Complement</td>
+<td>0O5、0o11</td>
+</tr>
+<tr>
+<td>Decimal</td>
+<td>[+-^][0-9]+</td>
+<td>Numeric</td>
+<td>5、9、-2</td>
+</tr>
+<tr>
+<td>Hexadecimal</td>
+<td>^0[xX][0-9a-fA-F]+</td>
+<td>Complement</td>
+<td>0x5、0x9</td>
+</tr>
+</tbody>
+</table>
+<h5 id="312-float-constant">3.1.2 Float Constant </h5>
+<p>There are three types of floating-point constants:<br>
+(1) machine-code representations following the IEEE754 standard (only supported for direct use in instructions, otherwise LASM defaults to integer constants);<br>
+(2) decimal number forms with a decimal point, e.g., 1.2, -1.53;<br>
+(3) scientific notation, e.g., 1e-2, -1e2, 2e + 5.</p>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:) Case 1</span>
+SMOVI <span class="token number">0xBFF8000000000000</span><span class="token punctuation">,</span> R10 <span class="token comment">//Direct use of machine code representation following IEEE754.</span>
+SMOVI <span class="token number">1e-2</span><span class="token punctuation">,</span> R11   <span class="token comment">// 1e-2 -&gt; 0x3F847AE147AE147B</span>
+SFMULD R10<span class="token punctuation">,</span> R11<span class="token punctuation">,</span> R10 <span class="token comment">// -1.5 * 1e-2 = -0.05,  R10 = 0xBF8EB851EB851EB8</span>
+
+<span class="token comment">//:) Case 2</span>
+<span class="token function">SMOVI</span> <span class="token punctuation">(</span><span class="token operator">-</span><span class="token number">1</span><span class="token operator">+</span><span class="token number">2.0</span><span class="token punctuation">)</span><span class="token operator">*</span><span class="token number">3</span><span class="token punctuation">,</span> R10  <span class="token comment">//(-1+2.0)*3 -&gt; 0x4008000000000000</span>
+SMOVI <span class="token number">2.0</span><span class="token punctuation">,</span> R11   <span class="token comment">// 2.0 -&gt; 0x4000000000000000</span>
+SFMULD R10<span class="token punctuation">,</span> R11<span class="token punctuation">,</span> R10
+<span class="token comment">//Note that if the constant expression has a floating-point constant, the result of the expression is in double-precision IEEE754 format. </span>
+<span class="token comment">//If there is no floating point constant in the expression, the result of the expression is a 64-bit integer constant.</span>
+<span class="token function">SMOVI</span> <span class="token punctuation">(</span><span class="token operator">-</span><span class="token number">1</span><span class="token operator">+</span><span class="token number">2</span><span class="token punctuation">)</span><span class="token operator">*</span><span class="token number">3</span><span class="token punctuation">,</span> R10  <span class="token comment">// 0x0000000000000003 -&gt; R10</span>
+
+<span class="token comment">//:) Other cases detailed in lasm-pseudo.md.</span>
+</code></pre><h5 id="313-character-constant">3.1.3 Character Constant </h5>
+<p>Character constants are single characters enclosed in single quotes. Internally, characters are represented as 8-bit ASCII characters. If single quotes are part of a character constant, just add the '\' before them. Character constants consisting of only two single quotes are valid and are assigned 0 by default.</p>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:) Cases</span>
+<span class="token char">'a'</span>  <span class="token operator">-&gt;</span> <span class="token number">0x0000000000000061</span>
+<span class="token char">'C'</span>  <span class="token operator">-&gt;</span> <span class="token number">0x0000000000000043</span>
+<span class="token char">'\''</span> <span class="token operator">-&gt;</span> <span class="token number">0x0000000000000027</span>
+<span class="token char">''</span>   <span class="token operator">-&gt;</span> <span class="token number">0x0000000000000000</span>
+<span class="token char">'\n'</span> <span class="token operator">-&gt;</span> <span class="token number">0x000000000000000A</span>
+<span class="token char">'\\'</span> <span class="token operator">-&gt;</span> <span class="token number">0x000000000000005C</span>
+</code></pre><h4 id="32-symbolic-constant">3.2 Symbolic Constant </h4>
+<p>Symbolic constants consist of two types, one defined by the @bN,@bh,@bf or @bd, and the other being properties of address indicators. Here, we focus on symbolic properties.<br>
+Symbolic properties are symbols used to describe properties specific to address indicator symbols. Symbolic properties include .cnt (The number of data elements) and .gra (The number of bytes required by a data element). For example, @usect ".bss", Arr, @b10, 128, where Arr is an address indicator, Arr.cnt = 128, Arr.gra = 2 Bytes.</p>
+<h4 id="33-complex-constant">3.3 Complex Constant </h4>
+<p>Complex constants are combinations of basic constants, categorized as strings and constant expressions.</p>
+<h5 id="331-string">3.3.1 String </h5>
+<p>A string is an ordered sequence of multiple character constants. LASM performs character concatenation operations in character order, resulting in a hexadecimal representation of an integer constant.</p>
+<pre data-role="codeBlock" data-info="python" class="language-python python"><code><span class="token punctuation">:</span><span class="token punctuation">)</span> Cases
+<span class="token decorator annotation punctuation">@b32</span> x<span class="token punctuation">,</span> <span class="token string">"abc"</span>                       <span class="token operator">//</span> <span class="token operator">-</span><span class="token operator">&gt;</span> <span class="token string">'a'</span><span class="token punctuation">,</span> <span class="token string">'b'</span><span class="token punctuation">,</span> <span class="token string">'c'</span> <span class="token operator">-</span><span class="token operator">&gt;</span> <span class="token number">0x616263</span> <span class="token operator">-</span><span class="token operator">&gt;</span> <span class="token number">0x00616263</span>
+<span class="token decorator annotation punctuation">@b32</span> y<span class="token punctuation">,</span> <span class="token string">'a'</span><span class="token operator">&lt;&lt;</span> <span class="token number">4</span><span class="token operator">+</span><span class="token string">'b'</span>                 <span class="token operator">//</span> <span class="token operator">-</span><span class="token operator">&gt;</span>  <span class="token number">0x6162</span> <span class="token operator">-</span><span class="token operator">&gt;</span> <span class="token number">0x00006162</span>
+<span class="token decorator annotation punctuation">@sect</span> <span class="token string">".data"</span><span class="token punctuation">,</span> addx<span class="token punctuation">,</span>@b8<span class="token punctuation">,</span> <span class="token string">"ab"</span><span class="token punctuation">,</span> <span class="token string">'c'</span>  <span class="token operator">//</span> <span class="token string">'ab'</span><span class="token punctuation">,</span> <span class="token string">'c'</span> <span class="token operator">-</span><span class="token operator">&gt;</span> <span class="token number">0x6162</span><span class="token punctuation">,</span> <span class="token number">0x63</span> <span class="token operator">-</span><span class="token operator">&gt;</span> <span class="token number">0x62</span><span class="token punctuation">,</span> <span class="token number">0x63</span>
+<span class="token decorator annotation punctuation">@sect</span> <span class="token string">".data"</span><span class="token punctuation">,</span> addx<span class="token punctuation">,</span> @b4 <span class="token string">"ab"</span><span class="token punctuation">,</span> <span class="token string">'c'</span>  <span class="token operator">//</span> <span class="token string">'ab'</span><span class="token punctuation">,</span> <span class="token string">'c'</span> <span class="token operator">-</span><span class="token operator">&gt;</span> <span class="token number">0x6162</span><span class="token punctuation">,</span> <span class="token number">0x63</span> <span class="token operator">-</span><span class="token operator">&gt;</span> <span class="token number">0x2</span><span class="token punctuation">,</span> <span class="token number">0x3</span>
+<span class="token decorator annotation punctuation">@b1</span> x<span class="token punctuation">,</span> <span class="token string">'c'</span>                          <span class="token operator">//</span> <span class="token string">'c'</span> <span class="token operator">-</span><span class="token operator">&gt;</span> <span class="token number">0x01</span>
+<span class="token decorator annotation punctuation">@sect</span> <span class="token string">".data"</span><span class="token punctuation">,</span> addx<span class="token punctuation">,</span> @b16<span class="token punctuation">,</span><span class="token string">'a'</span><span class="token operator">&lt;&lt;</span> <span class="token number">4</span><span class="token operator">+</span><span class="token string">'b'</span><span class="token punctuation">,</span> <span class="token string">'c'</span><span class="token operator">&lt;&lt;</span><span class="token number">4</span><span class="token operator">+</span><span class="token string">'d'</span>  <span class="token operator">//</span> <span class="token number">0x6162</span><span class="token punctuation">,</span> <span class="token number">0x6364</span>
+</code></pre><h5 id="332-constant-expression">3.3.2 Constant Expression </h5>
+<p>A constant expression is a sequence of basic or symbolic constants separated by arithmetic operators. Legitimate constant expressions are divided into two categories: simplifiable and non-simplifiable. Non-simplifiable constant expressions contain symbols whose values cannot be determined at the compilation stage, i.e., address indicators.</p>
+<pre data-role="codeBlock" data-info="python" class="language-python python"><code><span class="token operator">//</span><span class="token punctuation">:</span><span class="token punctuation">)</span> Operands <span class="token punctuation">(</span>i<span class="token punctuation">.</span>e<span class="token punctuation">.</span><span class="token punctuation">,</span> basic <span class="token keyword keyword-or">or</span> symbolic constants<span class="token punctuation">)</span>
+<span class="token number">1.</span> Three basic constants <span class="token punctuation">(</span>integer constants<span class="token punctuation">,</span> non<span class="token operator">-</span>IEEE754 <span class="token builtin">format</span> floating<span class="token operator">-</span>point constants<span class="token punctuation">,</span> character constants<span class="token punctuation">)</span><span class="token punctuation">.</span>
+<span class="token number">2.</span> Address indicators <span class="token punctuation">(</span>including memory first address<span class="token punctuation">,</span> function name<span class="token punctuation">,</span> <span class="token keyword keyword-and">and</span> <span class="token keyword keyword-in">in</span><span class="token operator">-</span>function label<span class="token punctuation">)</span><span class="token punctuation">.</span>
+<span class="token number">3.</span> Symbolic Constant<span class="token punctuation">.</span>
+
+<span class="token operator">//</span><span class="token punctuation">:</span><span class="token punctuation">)</span> Operator
+Constant expressions support <span class="token number">23</span> operators<span class="token punctuation">,</span> including unary <span class="token keyword keyword-and">and</span> binary operators<span class="token punctuation">.</span> The binary operators include six logical comparison operators<span class="token punctuation">.</span> The table below lists <span class="token builtin">all</span> the operators <span class="token keyword keyword-and">and</span> their priorities supported by LASM IR<span class="token punctuation">.</span> 
+Note that <span class="token builtin">any</span> constant expression containing <span class="token string">"/"</span> <span class="token keyword keyword-is">is</span> calculated <span class="token keyword keyword-as">as</span> double<span class="token operator">-</span>precision following the IEEE754 standard<span class="token punctuation">.</span>
+The following table lists the operation priority of each operator<span class="token punctuation">,</span> the smaller the value the higher the priority<span class="token punctuation">.</span>
+</code></pre><table>
+<thead>
+<tr>
+<th>Priority</th>
+<th>Operator</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>(</td>
+<td>Left bracket.</td>
+</tr>
+<tr>
+<td></td>
+<td>)</td>
+<td>Right bracket.</td>
+</tr>
+<tr>
+<td>1</td>
+<td>+</td>
+<td>Unary plus.</td>
+</tr>
+<tr>
+<td></td>
+<td>-</td>
+<td>Unary minus.</td>
+</tr>
+<tr>
+<td></td>
+<td>~</td>
+<td>Bitwise negation.</td>
+</tr>
+<tr>
+<td></td>
+<td>!</td>
+<td>Logical negation.</td>
+</tr>
+<tr>
+<td>2</td>
+<td>*</td>
+<td>Multiplication</td>
+</tr>
+<tr>
+<td></td>
+<td>/</td>
+<td>Signed division.</td>
+</tr>
+<tr>
+<td></td>
+<td>//</td>
+<td>Signed division.(round down)</td>
+</tr>
+<tr>
+<td></td>
+<td>%</td>
+<td>Signed remainder.</td>
+</tr>
+<tr>
+<td>3</td>
+<td>+</td>
+<td>Addition.</td>
+</tr>
+<tr>
+<td></td>
+<td>-</td>
+<td>Subtraction.</td>
+</tr>
+<tr>
+<td>4</td>
+<td>&lt;&lt;</td>
+<td>Shift left.</td>
+</tr>
+<tr>
+<td></td>
+<td>&gt;&gt;</td>
+<td>Arithmetic shift right.</td>
+</tr>
+<tr>
+<td>5</td>
+<td>&lt;</td>
+<td>Signed less than comparison.</td>
+</tr>
+<tr>
+<td></td>
+<td>&lt;=</td>
+<td>Signed less than or equal comparison.</td>
+</tr>
+<tr>
+<td></td>
+<td>&gt;</td>
+<td>Signed greater than comparison.</td>
+</tr>
+<tr>
+<td></td>
+<td>&gt;=</td>
+<td>Signed greater than or equal comparison.</td>
+</tr>
+<tr>
+<td></td>
+<td>==</td>
+<td>equality comparison.</td>
+</tr>
+<tr>
+<td></td>
+<td>!=</td>
+<td>Inequality comparison.</td>
+</tr>
+<tr>
+<td>6</td>
+<td>&amp;</td>
+<td>Bitwise and.</td>
+</tr>
+<tr>
+<td></td>
+<td>^</td>
+<td>Bitwise exclusive or.</td>
+</tr>
+<tr>
+<td></td>
+<td>|</td>
+<td>Bitwise or.</td>
+</tr>
+<tr>
+<td>7</td>
+<td>&amp;&amp;</td>
+<td>Logical and.</td>
+</tr>
+<tr>
+<td></td>
+<td>||</td>
+<td>Logical or.</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p><span id="J-pseudo"></span></p>
+<h3 id="4-pseudo-operation">4 Pseudo Operation </h3>
+<p><span id="J-storagedatatype"></span></p>
+<h4 id="41-storage-datatype">4.1 STORAGE DATATYPE </h4>
+<h5 id="bn">@bN </h5>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:)Syntax</span>
+@bN symbol_name<span class="token punctuation">,</span> symbol_value
+<span class="token comment">//symbol_name: ^[a-zA-Z_][a-zA-Z0-9_]*</span>
+<span class="token comment">//N:[1, 64]; </span>
+<span class="token comment">//symbol_value can be</span>
+<span class="token comment">//1. integer constants, floating-point constants other than IEEE754 format, character constants;</span>
+<span class="token comment">//2. strings, constant expressions;</span>
+<span class="token comment">//3. symbolic constants (defined by @bN, @bh, @bf, @bd) and properties (.gra, .cnt).</span>
+
+<span class="token comment">//Note that</span>
+<span class="token comment">//1. symbol_value is first expanded with 64 bits and then truncated with the lower N bits;</span>
+<span class="token comment">//2. strings are processed character by character, starting at the top;</span>
+<span class="token comment">//3. Floating-point constants in non-IEEE754 formats are converted to double-precision following the IEEE754 standard.</span>
+</code></pre><pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:) Case 1 - As arguments to other pseudo-operations.</span>
+@align <span class="token number">4</span>
+@usect <span class="token string">".bss"</span><span class="token punctuation">,</span> x<span class="token punctuation">,</span> @b32<span class="token punctuation">,</span> <span class="token number">10</span>  <span class="token comment">//Reserve a 40 bit contiguous space with the first address aligned with 4 bytes and recommended to access x in the @ b32 storage format.</span>
+<span class="token comment">//Here, the default is @ align 1,0</span>
+@sect <span class="token string">".data"</span><span class="token punctuation">,</span> x<span class="token punctuation">,</span> @b8<span class="token punctuation">,</span>  <span class="token number">0x2</span><span class="token punctuation">,</span> <span class="token operator">-</span><span class="token number">2</span><span class="token punctuation">,</span> <span class="token number">255</span><span class="token punctuation">,</span> <span class="token char">'A'</span> <span class="token comment">// 0x02, 0xfe, 0xff, 0x61</span>
+
+<span class="token comment">//:) Case 2- Integer constant, floating-point constant, character constant.</span>
+@b16<span class="token punctuation">,</span> x<span class="token punctuation">,</span> <span class="token operator">-</span><span class="token number">1</span> <span class="token comment">//Convert -1 to a 16 bit complement and assign it to x, i.e. x=0xFFFF. In fact, it extends unsigned to 64 bit machine code: 0x000000000000FFFF.</span>
+@b64 x<span class="token punctuation">,</span> <span class="token number">0</span>o3
+@b64 x<span class="token punctuation">,</span> <span class="token number">0</span>b101
+@sect <span class="token string">".rodata"</span><span class="token punctuation">,</span> x<span class="token punctuation">,</span> @b8<span class="token punctuation">,</span> <span class="token number">0x2</span><span class="token punctuation">,</span> <span class="token operator">-</span><span class="token number">2</span><span class="token punctuation">,</span> <span class="token number">255</span><span class="token punctuation">,</span> <span class="token char">'A'</span> <span class="token comment">// 0x02, 0xfe, 0xff, 0x61</span>
+@sect <span class="token string">".data"</span><span class="token punctuation">,</span> x<span class="token punctuation">,</span> @b1<span class="token punctuation">,</span> <span class="token number">0x2</span><span class="token punctuation">,</span> <span class="token operator">-</span><span class="token number">2</span><span class="token punctuation">,</span> <span class="token number">3</span><span class="token punctuation">,</span> <span class="token number">0</span>   <span class="token comment">// 0x00, 0x00, 0x01, 0x00</span>
+@sect <span class="token string">".data"</span><span class="token punctuation">,</span> x<span class="token punctuation">,</span> @b8<span class="token punctuation">,</span> <span class="token number">1.2</span><span class="token punctuation">,</span> <span class="token operator">-</span><span class="token number">1e2</span>   <span class="token comment">// 0x3FF3333333333333, 0xC059000000000000 -&gt; 0x33, 0x00</span>
+
+<span class="token comment">//:) Case 3 - Combining Constants (strings, constant expressions).</span>
+@sect <span class="token string">".data"</span><span class="token punctuation">,</span> x<span class="token punctuation">,</span> @b9<span class="token punctuation">,</span> <span class="token number">0x2</span><span class="token punctuation">,</span> <span class="token operator">-</span><span class="token number">0</span>b10<span class="token punctuation">,</span> <span class="token number">6</span><span class="token operator">*</span><span class="token punctuation">(</span><span class="token number">3</span><span class="token operator">+</span><span class="token number">2</span><span class="token punctuation">)</span> <span class="token comment">// 0x0002, 0x01fe, 0x001e; x.gra=2Byte</span>
+@sect <span class="token string">".data"</span><span class="token punctuation">,</span> x<span class="token punctuation">,</span> @b8<span class="token punctuation">,</span> <span class="token string">"ab"</span><span class="token punctuation">,</span> <span class="token char">'c'</span>    <span class="token comment">// 'ab', 'c' -&gt; 0x6162, 0x63 -&gt; 0x62, 0x63</span>
+@sect <span class="token string">".data"</span><span class="token punctuation">,</span> x<span class="token punctuation">,</span> @b4<span class="token punctuation">,</span> <span class="token string">"ab"</span><span class="token punctuation">,</span> <span class="token char">'c'</span>    <span class="token comment">// 'ab', 'c' -&gt; 0x6162, 0x63 -&gt; 0x2, 0x3</span>
+@b1 x<span class="token punctuation">,</span> <span class="token string">"ab"</span>   <span class="token comment">// 'ab' -&gt; 0x00</span>
+@b1 x<span class="token punctuation">,</span> <span class="token char">'c'</span>    <span class="token comment">// 'c' -&gt; 0x01</span>
+@sect <span class="token string">".data"</span><span class="token punctuation">,</span> x<span class="token punctuation">,</span> @b16<span class="token punctuation">,</span> <span class="token char">'a'</span><span class="token operator">&lt;&lt;</span> <span class="token number">4</span><span class="token operator">+</span><span class="token char">'b'</span><span class="token punctuation">,</span> <span class="token char">'c'</span><span class="token operator">&lt;&lt;</span><span class="token number">4</span><span class="token operator">+</span><span class="token char">'d'</span>  <span class="token comment">// 0x6162, 0x6364</span>
+
+<span class="token comment">//:) Case 4 - Symbolic constants (defined by @bN, @bh, @bf, @bd) and properties (.gra, .cnt).</span>
+@b32 thr<span class="token punctuation">,</span> <span class="token number">0x3</span>
+@b32 x<span class="token punctuation">,</span> <span class="token punctuation">(</span>thr<span class="token operator">&lt;&lt;</span><span class="token number">1</span><span class="token punctuation">)</span><span class="token operator">+</span><span class="token number">100</span><span class="token operator">|</span><span class="token number">34</span>  <span class="token comment">//Referencing  the symbolic constant: thr.</span>
+
+@bh a<span class="token punctuation">,</span> <span class="token number">1.2</span>         <span class="token comment">// 0x3CCD -&gt; 0x0000000000003CCD</span>
+@b16 b<span class="token punctuation">,</span>  <span class="token number">1.2</span>       <span class="token comment">// 0x3FF3333333333333 -&gt; 0x0000000000003333</span>
+@b4 c<span class="token punctuation">,</span> <span class="token operator">-</span><span class="token number">2</span>          <span class="token comment">// 0xFFFFFFFFFFFFFFFE -&gt; 0x0x0000000000000E</span>
+@sect <span class="token string">".data"</span><span class="token punctuation">,</span> x<span class="token punctuation">,</span> @b7<span class="token punctuation">,</span> a<span class="token punctuation">,</span> b<span class="token punctuation">,</span> c<span class="token punctuation">,</span> <span class="token operator">-</span><span class="token number">2</span>     <span class="token comment">// 0x4D, 0x33,0x0E, 0x7E</span>
+<span class="token comment">//Specifically, to reduce precision loss, for float type signed constants, the original value will be used when referenced.</span>
+<span class="token comment">//For example, when referencing a, the conversion is equivalent to @b7 x, 1.2</span>
+
+@sect <span class="token string">".data"</span><span class="token punctuation">,</span> a2<span class="token punctuation">,</span> @bf<span class="token punctuation">,</span> <span class="token number">1.2</span><span class="token punctuation">,</span> <span class="token number">1.4</span><span class="token punctuation">,</span> <span class="token operator">-</span><span class="token number">1.5</span><span class="token punctuation">,</span> <span class="token number">1e-2</span>  <span class="token comment">// 0x3F99999A, 0x3FB33333, 0xBFC00000, 0x3C23D70A</span>
+@usect <span class="token string">".bss"</span><span class="token punctuation">,</span> b2<span class="token punctuation">,</span> @b32<span class="token punctuation">,</span> <span class="token number">10</span>
+@b16 x<span class="token punctuation">,</span> <span class="token operator">-</span><span class="token number">0x3</span><span class="token punctuation">,</span> a2<span class="token punctuation">.</span>gra<span class="token punctuation">,</span> a2<span class="token punctuation">.</span>cnt<span class="token punctuation">,</span> b2<span class="token punctuation">.</span>cnt  <span class="token comment">// 0xFFFD, 0x0004, 0x0004, 0x000A</span>
+</code></pre><pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:) Brief for @bh, @bf, @bd:</span>
+There are three types of floating<span class="token operator">-</span>point constants<span class="token operator">:</span>
+<span class="token number">1.</span> Machine<span class="token operator">-</span>code representations following the IEEE754 <span class="token function">standard</span> <span class="token punctuation">(</span>only supported <span class="token keyword keyword-for">for</span> direct use in instructions<span class="token punctuation">,</span> otherwise LASM defaults to integer constants<span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token number">2.</span> Decimal number forms with a decimal point<span class="token punctuation">,</span> e<span class="token punctuation">.</span>g<span class="token punctuation">.</span><span class="token punctuation">,</span> <span class="token number">1.2</span><span class="token punctuation">,</span> <span class="token operator">-</span><span class="token number">1.53</span><span class="token punctuation">;</span> 
+<span class="token number">3.</span> Scientific notation<span class="token punctuation">,</span> e<span class="token punctuation">.</span>g<span class="token punctuation">.</span><span class="token punctuation">,</span> <span class="token number">1e-2</span><span class="token punctuation">,</span> <span class="token operator">-</span><span class="token number">1e2</span><span class="token punctuation">,</span> <span class="token number">2e+5</span><span class="token punctuation">.</span>
+<span class="token comment">//Note that floating point constants in non-machine code form are converted to double precision according to the IEEE 754 standard.</span>
+</code></pre><h5 id="bh">@bh </h5>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:)Syntax</span>
+@bh symbol_name<span class="token punctuation">,</span> symbol_value  <span class="token comment">//Half precision IEEE754 format. {1,5,10}</span>
+<span class="token comment">//symbol_name: ^[a-zA-Z_][a-zA-Z0-9_]*</span>
+<span class="token comment">//symbol_value can be</span>
+<span class="token comment">//1. integer constants, floating-point constants other than IEEE754 format, character constants. </span>
+<span class="token comment">//2. strings, constant expressions.</span>
+<span class="token comment">//3. symbolic constants (defined by @bN, @bh, @bf, @bd) and properties (.gra, .cnt).</span>
+</code></pre><h5 id="bf">@bf </h5>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:)Syntax</span>
+@bf symbol_name<span class="token punctuation">,</span> symbol_value <span class="token comment">//Single precision IEEE754 format. {1,8,23}</span>
+<span class="token comment">//symbol_name: ^[a-zA-Z_][a-zA-Z0-9_]*</span>
+<span class="token comment">//symbol_value: refer to @bh</span>
+</code></pre><h5 id="bd">@bd </h5>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:)Syntax</span>
+@bd symbol_name<span class="token punctuation">,</span> symbol_value <span class="token comment">//Double precision IEEE754 format. {1,11,52}</span>
+<span class="token comment">//symbol_name: ^[a-zA-Z_][a-zA-Z0-9_]*</span>
+<span class="token comment">//symbol_value: refer to @bh</span>
+</code></pre><pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:) Case 1 - As arguments to other pseudo-operations.</span>
+@align <span class="token number">4</span>
+@usect <span class="token string">"bss"</span><span class="token punctuation">,</span> x<span class="token punctuation">,</span> @bd<span class="token punctuation">,</span> <span class="token number">10</span>  <span class="token comment">////Reserve a 80 bit contiguous space with the first address aligned with 4 bytes and recommended to access x in the @bd storage format.</span>
+@bh x<span class="token punctuation">,</span> <span class="token operator">-</span><span class="token number">1</span>    <span class="token comment">//Convert -1 to 16 bit IEEE754 format and assign it to x, i.e. x=0xBC00 (actually represented as 64 bit machine code: 0x0000000 BC00).</span>
+
+<span class="token comment">//:) Case 2- Integer constant, floating-point constant, character constant.</span>
+@bd x<span class="token punctuation">,</span> <span class="token number">0x1</span>   <span class="token comment">// 0x3FF0000000000000</span>
+@bd x<span class="token punctuation">,</span> <span class="token operator">-</span><span class="token number">2</span>    <span class="token comment">// 0xC000000000000000</span>
+@bd x<span class="token punctuation">,</span> <span class="token number">1.2</span>   <span class="token comment">// 0x3FF3333333333333</span>
+@bd x<span class="token punctuation">,</span> <span class="token operator">-</span><span class="token number">1e-2</span> <span class="token comment">// 0xBF847AE147AE147B</span>
+@bd x<span class="token punctuation">,</span> <span class="token char">'a'</span>   <span class="token comment">// 0x4058400000000000</span>
+
+<span class="token comment">//:) Case 3 - Combining constants (strings, constant expressions).</span>
+@bf x<span class="token punctuation">,</span> <span class="token number">3</span><span class="token operator">+</span><span class="token number">0x4</span><span class="token operator">*</span><span class="token punctuation">(</span><span class="token number">1.2</span><span class="token operator">-</span><span class="token number">0.384</span><span class="token punctuation">)</span><span class="token operator">-</span><span class="token char">'a'</span> <span class="token comment">//10  ; -&gt; @bf x, -2.736  -&gt; x=0xC02F1AA0</span>
+@sect <span class="token string">".data"</span><span class="token punctuation">,</span> x<span class="token punctuation">,</span> @bd<span class="token punctuation">,</span> <span class="token number">6</span><span class="token operator">*</span><span class="token punctuation">(</span><span class="token number">3</span><span class="token operator">+</span><span class="token number">2</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token number">6</span><span class="token operator">*</span><span class="token punctuation">(</span><span class="token number">3</span><span class="token operator">+</span><span class="token number">2.0</span><span class="token punctuation">)</span>  <span class="token comment">// 0x403E000000000000, 0x403E000000000000</span>
+@sect <span class="token string">".data"</span><span class="token punctuation">,</span> x<span class="token punctuation">,</span> @bd<span class="token punctuation">,</span> <span class="token string">"ab"</span><span class="token punctuation">,</span> <span class="token char">'c'</span>  <span class="token comment">// 0x4058400000000000, 0x4058800000000000</span>
+
+<span class="token comment">//:) Case 4 - Symbolic constants (defined by @bN, @bh, @bf, @bd) and properties (.gra, .cnt).</span>
+@bh a<span class="token punctuation">,</span> <span class="token number">1.2</span>      <span class="token comment">// 0x3CCD</span>
+@b4 b<span class="token punctuation">,</span> <span class="token operator">-</span><span class="token number">2</span>       <span class="token comment">// 0xFFFFFFFFFFFFFFFE -&gt; 0x0E</span>
+@sect <span class="token string">"xdmeifj"</span><span class="token punctuation">,</span> x<span class="token punctuation">,</span> @bd<span class="token punctuation">,</span> a<span class="token punctuation">,</span> b<span class="token punctuation">,</span> <span class="token operator">-</span><span class="token number">2</span>   <span class="token comment">// 0x3CCD,0x0E,-2 -&gt; 0x3FF3340000000000,0x402C000000000000,0xC000000000000000</span>
+<span class="token comment">//Note that the above conversion process is 1.2(@bh)=&gt;double, not 0x3CCD=&gt;double.</span>
+
+@sect <span class="token string">".data"</span><span class="token punctuation">,</span> a2<span class="token punctuation">,</span> @bf<span class="token punctuation">,</span> <span class="token number">1.2</span><span class="token punctuation">,</span> <span class="token operator">-</span><span class="token number">1.5</span><span class="token punctuation">,</span> <span class="token number">1e-2</span>  <span class="token comment">// 0x3F99999A, 0xBFC00000, 0x3C23D70A</span>
+@usect <span class="token string">"bss"</span><span class="token punctuation">,</span> b2<span class="token punctuation">,</span> @b32<span class="token punctuation">,</span> <span class="token number">10</span>
+@sect <span class="token string">".data"</span><span class="token punctuation">,</span> x<span class="token punctuation">,</span> @bd<span class="token punctuation">,</span> a2<span class="token punctuation">.</span>gra<span class="token punctuation">,</span> a2<span class="token punctuation">.</span>cnt<span class="token punctuation">,</span> b2<span class="token punctuation">.</span>cnt  <span class="token comment">// 4,3,10 -&gt; 0x4010000000000000,0x4030000000000000,0x4024000000000000</span>
+</code></pre><p><span id="J-segment"></span></p>
+<h4 id="42-segment">4.2 SEGMENT </h4>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token operator">:</span><span class="token punctuation">)</span>Brief
+<span class="token number">1.</span> The segment can be divided into initialization <span class="token function">segment</span> <span class="token punctuation">(</span>@sect<span class="token punctuation">)</span> and uninitialized <span class="token function">segment</span> <span class="token punctuation">(</span>@usect<span class="token punctuation">)</span><span class="token punctuation">.</span>
+<span class="token number">2.</span> After completing @usect<span class="token punctuation">,</span> LASM will automatically revert back to the previous segment<span class="token punctuation">;</span> After completing @sect<span class="token punctuation">,</span> a new segment will <span class="token function">start</span> <span class="token punctuation">(</span><span class="token keyword keyword-if">if</span> the segment name is different<span class="token punctuation">)</span><span class="token punctuation">.</span>
+A typical <span class="token keyword keyword-case">case</span><span class="token operator">:</span>
+@sect <span class="token string">".data"</span><span class="token punctuation">,</span> x<span class="token punctuation">,</span> @b64 x<span class="token punctuation">,</span> <span class="token number">13</span><span class="token punctuation">,</span> <span class="token number">14</span>
+@usect <span class="token string">".bss"</span><span class="token punctuation">,</span> sym<span class="token punctuation">,</span> @bh<span class="token punctuation">,</span> <span class="token number">32</span>   <span class="token comment">//The segment name is .bss</span>
+@sect <span class="token string">".text"</span>                 <span class="token comment">//End .data, start .text</span>
+@func __start <span class="token punctuation">{</span>               <span class="token comment">//__start is pushed into the .text </span>
+<span class="token punctuation">}</span>
+<span class="token number">3.</span> Uninitialized segment<span class="token punctuation">,</span> usually allocated in RAM<span class="token punctuation">,</span> is simply a reserved space<span class="token punctuation">.</span> Programs can use this space to generate and store variables during runtime<span class="token punctuation">.</span>
+</code></pre><h5 id="sect">@sect </h5>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:)Syntax</span>
+@sect <span class="token string">"section_name"</span>  <span class="token comment">//Indicate that the following instructions and data are located in the initialization section "section_name".</span>
+or
+@sect <span class="token string">"section_name"</span><span class="token punctuation">,</span> symbol_name<span class="token punctuation">,</span> T<span class="token punctuation">,</span> val1 <span class="token punctuation">[</span><span class="token punctuation">,</span> val2<span class="token punctuation">[</span><span class="token punctuation">,</span> <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">]</span><span class="token punctuation">]</span> <span class="token comment">//Initialize one or more consecutive T-type data in the segment "section_name". </span>
+<span class="token comment">//symbol_name: ^[a-zA-Z_][a-zA-Z0-9_]*</span>
+<span class="token comment">//T can be @bN, @bh, @bf or @bd.</span>
+<span class="token comment">//symbol_name represents the first address.</span>
+<span class="token comment">//val1,val2,... can be</span>
+<span class="token comment">//1. integer constants, floating-point constants other than IEEE754 format, character constants. </span>
+<span class="token comment">//2. strings, constant expressions.</span>
+<span class="token comment">//3. symbolic constants (defined by @bN, @bh, @bf, @bd) and properties (.gra, .cnt).</span>
+</code></pre><pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:) Case 1</span>
+@sect <span class="token string">"custom"</span>
+@func _daxpy X<span class="token punctuation">,</span>Y<span class="token punctuation">,</span> N <span class="token punctuation">{</span>
+<span class="token punctuation">}</span>
+<span class="token comment">//:) Case 2</span>
+@sect <span class="token string">".data"</span><span class="token punctuation">,</span> arr_x<span class="token punctuation">,</span> @b32<span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">,</span><span class="token number">3</span><span class="token punctuation">,</span> <span class="token number">5</span><span class="token punctuation">,</span><span class="token operator">-</span><span class="token number">3</span><span class="token punctuation">,</span><span class="token number">4</span> 
+</code></pre><h5 id="usect">@usect </h5>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:)Syntax</span>
+@usect <span class="token string">"section_name"</span><span class="token punctuation">,</span> symbol_name<span class="token punctuation">,</span> T<span class="token punctuation">,</span> count
+<span class="token comment">//symbol_name: ^[a-zA-Z_][a-zA-Z0-9_]*</span>
+<span class="token comment">//symbol_name points to the first byte of reserved space.</span>
+<span class="token comment">//T can be @bN, @bh, @bf or @bd.</span>
+<span class="token comment">//count: the quantity of data in the reserved space.</span>
+<span class="token comment">//The size of reserved space(bytes) = sizeof(T) * count</span>
+<span class="token comment">//The starting position of the space can be set through @align, with a default alignment of 1 byte and an offset of 0 bytes.</span>
+</code></pre><pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:) Case 1</span>
+@usect <span class="token string">"custom"</span><span class="token punctuation">,</span> _sym<span class="token punctuation">,</span> @bh<span class="token punctuation">,</span> <span class="token number">1</span>
+
+@align <span class="token number">8</span><span class="token punctuation">,</span> <span class="token number">1</span>
+@usect <span class="token string">".bss"</span><span class="token punctuation">,</span> x<span class="token punctuation">,</span> @b32<span class="token punctuation">,</span> <span class="token number">128</span> <span class="token comment">//Align the first address with 8 bytes, offset +1.</span>
+</code></pre><p><span id="J-innerfunction"></span></p>
+<h4 id="43-inner-function">4.3 INNER-FUNCTION </h4>
+<h5 id="func">@func </h5>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:)Syntax</span>
+@func symbol_name <span class="token punctuation">[</span>arg1<span class="token punctuation">[</span><span class="token punctuation">,</span> arg2<span class="token punctuation">[</span><span class="token punctuation">,</span> <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">]</span> <span class="token punctuation">{</span> <span class="token comment">//Declare regular function</span>
+    <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span>
+<span class="token punctuation">}</span>
+<span class="token comment">//symbol_name: ^[a-zA-Z_][a-zA-Z0-9_]*</span>
+<span class="token comment">//function input: arg1,arg2,...: ^[a-zA-Z_][a-zA-Z0-9_]*</span>
+<span class="token comment">//The symbols declared by this pseudo-operation are global within the file, and the user needs to ensure that the function is uniquely named within the file when writing the program. </span>
+<span class="token comment">//If the function is referenced by another file, user need to ensure that the function is uniquely named within these two files; </span>
+<span class="token comment">//otherwise, LASM will report an error.</span>
+</code></pre><h5 id="main">@main </h5>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:)Syntax</span>
+@main symbol_name <span class="token punctuation">[</span>arg1<span class="token punctuation">[</span><span class="token punctuation">,</span> arg2<span class="token punctuation">[</span><span class="token punctuation">,</span> <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">]</span> <span class="token punctuation">{</span> <span class="token comment">//Declare entry function</span>
+    <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span>
+<span class="token punctuation">}</span>
+<span class="token comment">//The usage of @main and @func is basically the same. </span>
+<span class="token comment">//The difference is that the entry function is unique, i.e. a project can contain at most one entry function declaration, otherwise LASM will report an error, and @main does not allow parameters to be passed in.</span>
+<span class="token comment">//Note that if @main does not exist in the project, LASM will optimize all regular functions in the project, which will eventually be exported to the source file in the topological order in which they are called, otherwise LASM will only optimize the regular functions that have an ancestor in the entry function.</span>
+</code></pre><h5 id="ret">@ret </h5>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:)Syntax</span>
+@ret <span class="token punctuation">[</span>val1<span class="token punctuation">[</span><span class="token punctuation">,</span> val2<span class="token punctuation">[</span><span class="token punctuation">,</span> val3<span class="token punctuation">[</span><span class="token punctuation">,</span> <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">]</span>
+<span class="token comment">//val1, val2, ...：^[a-zA-Z_][a-zA-Z0-9_]*</span>
+<span class="token comment">//The return value can be a constant, a constant symbol, a physical register, and any variable within a function body</span>
+
+<span class="token comment">//The use of @ret is relatively free, and the following three cases are discussed:</span>
+<span class="token comment">//a) @ret without a return value: the jump instruction is executed directly at the end of the current function;</span>
+<span class="token comment">//b) @ret with return value: the current function is terminated by passing the return value and then executing the jump;</span>
+<span class="token comment">//c) @ret not given: the called function must be given @ret, otherwise an error is reported.</span>
+</code></pre><h5 id="label">label: </h5>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//Used to mark the location of the program</span>
+<span class="token comment">//:) General Labels.</span>
+label<span class="token operator">:</span>
+<span class="token comment">//:) Labels with loop information.</span>
+label<span class="token operator">:</span> <span class="token punctuation">[</span>min_iteration<span class="token punctuation">[</span><span class="token punctuation">,</span> max_iteration<span class="token punctuation">]</span><span class="token punctuation">]</span>
+<span class="token comment">//label: ^[a-zA-Z_][a-zA-Z0-9_]*</span>
+<span class="token comment">//min_iteration: minimum number of loop iterations; min_iteration &gt; 0</span>
+<span class="token comment">//max_iteration: maximum  number of loop iterations.</span>
+
+<span class="token comment">//Note that</span>
+<span class="token comment">//1. min_iteration and max_iteration are the actual number of iterations of the loop body, independent of the initial value of the loop count.</span>
+<span class="token comment">//2. LASM will recognize the loop structure in the program (for all loop types), and will not allow cross loops.</span>
+
+<span class="token comment">//An example of loop parsing in LASM:</span>
+i_am_loop_1<span class="token operator">:</span>                         i_am_loop_1 <span class="token punctuation">{</span>
+        <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span>                                 <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span>
+i_am_loop_2<span class="token operator">:</span> <span class="token number">10000</span><span class="token punctuation">,</span><span class="token number">200000</span>               i_am_loop_2 <span class="token punctuation">{</span>
+        <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span>                                 <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span>
+        SSUBU r_9<span class="token punctuation">,</span> r_0<span class="token punctuation">,</span> r_0                 <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span>
+  <span class="token punctuation">[</span>r_0<span class="token punctuation">]</span> SBR   i_am_loop_2               <span class="token punctuation">}</span>
+        SADD  R13<span class="token punctuation">,</span> R12<span class="token punctuation">,</span> R13     <span class="token operator">-&gt;</span>        <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span>
+        SLT   R13<span class="token punctuation">,</span> R9<span class="token punctuation">,</span>  r_0          
+  <span class="token punctuation">[</span>r_0<span class="token punctuation">]</span> SBR   i_am_loop_1            <span class="token punctuation">}</span> 
+        <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span>                               <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span>
+i_am_loop_3<span class="token operator">:</span>  <span class="token number">20000</span>                  i_am_loop_3 <span class="token punctuation">{</span>
+        <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span>                               <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span>
+  <span class="token punctuation">[</span>r_1<span class="token punctuation">]</span> SBR   i_am_loop_3            <span class="token punctuation">}</span>
+</code></pre><p><span id="J-interfunction"></span></p>
+<h4 id="44-inter-function">4.4 INTER-FUNCTION </h4>
+<h5 id="import">@import </h5>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:)Syntax</span>
+@import <span class="token string">"filename"</span><span class="token punctuation">,</span> func1<span class="token punctuation">[</span><span class="token punctuation">,</span> func2<span class="token punctuation">[</span><span class="token punctuation">,</span> <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">]</span><span class="token punctuation">]</span>  <span class="token comment">//Identifies one or more functions used in the current file and defined in other files.</span>
+</code></pre><pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:) A case</span>
+<span class="token comment">//in the file: a.la:</span>
+@sect <span class="token string">"text"</span>
+@func test a<span class="token punctuation">,</span>b<span class="token punctuation">,</span>c <span class="token punctuation">{</span> 
+    <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span>
+    @ret <span class="token number">1</span>
+<span class="token punctuation">}</span>
+@func test999 <span class="token punctuation">{</span> 
+    <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span>
+    @ret
+<span class="token punctuation">}</span>
+
+<span class="token comment">//in the file: b.la. </span>
+<span class="token comment">//b.la imports two functions from a.la, one is test and the other is test999.</span>
+@import <span class="token string">"a.la"</span><span class="token punctuation">,</span> test<span class="token punctuation">,</span> test999
+</code></pre><h5 id="call">@call </h5>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:)Syntax</span>
+@call function_name<span class="token punctuation">,</span> <span class="token punctuation">[</span>arg1<span class="token punctuation">[</span><span class="token punctuation">,</span> arg2<span class="token punctuation">[</span><span class="token punctuation">,</span> <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token punctuation">[</span><span class="token punctuation">,</span><span class="token operator">=</span> ret1<span class="token punctuation">[</span><span class="token punctuation">,</span> ret2<span class="token punctuation">[</span><span class="token punctuation">,</span> <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">]</span>
+<span class="token comment">//function_name is the name of the function being called, arg1, arg2, ... are the input parameters of the called function, and ret1, ret2, ... denote the return output of the called function, and ret1, ret2, ... denote the return output of the called function.</span>
+<span class="token comment">//Input parameter types include constants, symbolic constants, and variables. Note that the input and return parameters must match the called function in number and type, and the called function must end with the @ret pseudo-operation.</span>
+</code></pre><pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:) Case 1</span>
+@call somefunc<span class="token punctuation">,</span> var_1<span class="token punctuation">,</span> var_2<span class="token punctuation">,</span> var_3<span class="token punctuation">,</span><span class="token operator">=</span> ret_1<span class="token punctuation">,</span> ret_2  
+
+<span class="token comment">//:) Case 2</span>
+@call somefunc<span class="token punctuation">,</span> var_1<span class="token punctuation">,</span> var_2  
+
+<span class="token comment">//:) Case 3</span>
+@call somefunc<span class="token punctuation">,</span><span class="token operator">=</span> ret_1 
+
+<span class="token comment">//:) Case 4</span>
+@call somefunc 
+</code></pre><h5 id="icall">@icall </h5>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code>@icall is used in the same way as @call<span class="token punctuation">.</span> 
+The difference is that calls declared via @icall may trigger function inlining<span class="token punctuation">,</span> which means that there is no longer a need to protect the context of the call point and avoids the overhead of jump operations<span class="token punctuation">.</span> 
+The conditions <span class="token keyword keyword-for">for</span> enabling @icall are strict<span class="token punctuation">.</span> 
+First<span class="token punctuation">,</span> LASM automatically checks the legality of inlining the called function<span class="token punctuation">,</span> and <span class="token keyword keyword-if">if</span> the called function does not satisfy the inlining condition<span class="token punctuation">,</span> @icall will be demoted to @call<span class="token punctuation">.</span> 
+Second<span class="token punctuation">,</span> inlining operations may lead to increased <span class="token keyword keyword-register">register</span> pressure given the active variables in the call<span class="token operator">-</span>point context<span class="token punctuation">,</span> and <span class="token keyword keyword-for">for</span> this reason<span class="token punctuation">,</span> inlining will be disabled when LASM detects excessive <span class="token keyword keyword-register">register</span> pressure<span class="token punctuation">.</span>
+</code></pre><p><span id="J-utility"></span></p>
+<h4 id="45-utility">4.5 UTILITY </h4>
+<h5 id="asg">@asg </h5>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:)Syntax</span>
+@asg symbol<span class="token punctuation">,</span> reg  <span class="token punctuation">;</span> 为symbol指定寄存器
+<span class="token comment">//When specifying a register group, the complete form must be given, and it is not allowed to assign separate values to parts of the register group.</span>
+</code></pre><pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:) Case 1</span>
+@asg ar_2<span class="token punctuation">,</span> AR0
+@asg v_1<span class="token operator">:</span>v_0<span class="token punctuation">,</span> VR5<span class="token operator">:</span>VR4
+SMVAIA <span class="token number">1</span><span class="token punctuation">,</span> ar_2
+VLDDW  <span class="token operator">*</span>ar_2<span class="token operator">++</span><span class="token punctuation">,</span>   v_1<span class="token operator">:</span>v_0
+<span class="token comment">//After the execution of @asg.</span>
+SMVAIA <span class="token number">1</span><span class="token punctuation">,</span> AR0
+VLDDW  <span class="token operator">*</span>AR0<span class="token operator">++</span><span class="token punctuation">,</span>  VR5<span class="token operator">:</span>VR4
+</code></pre><h5 id="dreg">@dreg </h5>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:)Syntax</span>
+@dreg r1 <span class="token punctuation">[</span><span class="token punctuation">,</span>r2 <span class="token punctuation">[</span><span class="token punctuation">,</span>r3<span class="token punctuation">[</span><span class="token punctuation">,</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">]</span>  <span class="token comment">//Specify physical registers that are disabled during the register allocation phase.</span>
+<span class="token comment">//Note that this pseudo-operation does not disable physical registers that have been assigned by the user or are already in use by the program.</span>
+</code></pre><pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:) Case 1</span>
+@dreg AR8<span class="token punctuation">,</span> R11<span class="token punctuation">,</span> VR1<span class="token punctuation">,</span> VR0
+</code></pre><h5 id="align">@align </h5>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:)Syntax</span>
+@align alignment <span class="token punctuation">[</span><span class="token punctuation">,</span> offset<span class="token punctuation">]</span>  <span class="token comment">//Specify the starting position of the first next storage-related symbol.</span>
+<span class="token comment">//alignment: [0-9]+；It specifies the minimum amount of alignment required by the allocated space, which defaults to 4 bytes.</span>
+<span class="token comment">//offset: storage offset, optional parameter. It ensures that the next allocated space appears on the specified storage boundary, default is 0 bytes.</span>
+</code></pre><h5 id="mdep">@mdep </h5>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:)Syntax</span>
+@mdep sym1<span class="token punctuation">,</span> sym2<span class="token punctuation">[</span><span class="token punctuation">,</span> sym3<span class="token punctuation">[</span><span class="token punctuation">,</span> <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">]</span><span class="token punctuation">]</span>  <span class="token comment">//Declare optimization of multiple memory address correlation within a segment.</span>
+<span class="token comment">//sym1,sym2,...: ^[a-zA-Z_][a-zA-Z0-9_]*</span>
+
+<span class="token comment">//Note that LASM assumes that there are no memory dependencies within a function.</span>
+</code></pre><pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:) Case 1</span>
+@align <span class="token number">8</span><span class="token punctuation">,</span> <span class="token number">2</span>
+@usect <span class="token string">"bss"</span><span class="token punctuation">,</span> x<span class="token punctuation">,</span> @bh<span class="token punctuation">,</span> <span class="token number">32</span> <span class="token comment">//x is 8-byte aligned, with a 2-byte offset.</span>
+
+<span class="token comment">//:) Case 2</span>
+@align <span class="token number">4</span>
+@sect <span class="token string">".data"</span><span class="token punctuation">,</span> x<span class="token punctuation">,</span>@b32<span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">,</span><span class="token number">2</span><span class="token punctuation">,</span><span class="token number">3</span> <span class="token comment">//The address referred to by x will be 4-byte aligned.</span>
+@usect <span class="token string">".bss"</span><span class="token punctuation">,</span> y<span class="token punctuation">,</span> @bh<span class="token punctuation">,</span> <span class="token number">32</span>  <span class="token comment">//The address indicated by y will be aligned by default.</span>
+
+<span class="token comment">//:) Case 3</span>
+@sect <span class="token string">"text"</span>
+@align <span class="token number">4</span>   <span class="token comment">//Only valid for the first occurrence of the next address.</span>
+@func XXX a<span class="token punctuation">,</span>b<span class="token punctuation">,</span>c <span class="token punctuation">{</span> <span class="token comment">//The address referred to by XXX will be aligned with 4 bytes.</span>
+    <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span>
+<span class="token punctuation">}</span>
+</code></pre><h5 id="icp">@icp </h5>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:)Syntax</span>
+@icp N <span class="token comment">//Copy the first instruction or instruction stream next N times.</span>
+</code></pre><pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:) Case 1</span>
+@icp <span class="token number">3</span>
+vstor   VR63<span class="token punctuation">,</span> <span class="token operator">*</span><span class="token operator">++</span>AR2<span class="token punctuation">[</span><span class="token number">16</span><span class="token punctuation">]</span>
+<span class="token comment">//After processing:</span>
+vstor   VR63<span class="token punctuation">,</span> <span class="token operator">*</span><span class="token operator">++</span>AR2<span class="token punctuation">[</span><span class="token number">16</span><span class="token punctuation">]</span>
+vstor   VR63<span class="token punctuation">,</span> <span class="token operator">*</span><span class="token operator">++</span>AR2<span class="token punctuation">[</span><span class="token number">16</span><span class="token punctuation">]</span>
+vstor   VR63<span class="token punctuation">,</span> <span class="token operator">*</span><span class="token operator">++</span>AR2<span class="token punctuation">[</span><span class="token number">16</span><span class="token punctuation">]</span>
+
+<span class="token comment">//:) Case 2</span>
+@icp <span class="token number">2</span>
+  vstor   VR63<span class="token punctuation">,</span> <span class="token operator">*</span>AR2<span class="token operator">++</span><span class="token punctuation">[</span><span class="token number">32</span><span class="token punctuation">]</span>
+<span class="token operator">|</span> vstor   VR63<span class="token punctuation">,</span> <span class="token operator">*</span><span class="token operator">+</span>AR2<span class="token punctuation">[</span><span class="token number">16</span><span class="token punctuation">]</span>
+<span class="token comment">//After processing:</span>
+  vstor   VR63<span class="token punctuation">,</span> <span class="token operator">*</span>AR2<span class="token operator">++</span><span class="token punctuation">[</span><span class="token number">32</span><span class="token punctuation">]</span>
+<span class="token operator">|</span> vstor   VR63<span class="token punctuation">,</span> <span class="token operator">*</span><span class="token operator">+</span>AR2<span class="token punctuation">[</span><span class="token number">16</span><span class="token punctuation">]</span>
+  vstor   VR63<span class="token punctuation">,</span> <span class="token operator">*</span>AR2<span class="token operator">++</span><span class="token punctuation">[</span><span class="token number">32</span><span class="token punctuation">]</span>
+<span class="token operator">|</span> vstor   VR63<span class="token punctuation">,</span> <span class="token operator">*</span><span class="token operator">+</span>AR2<span class="token punctuation">[</span><span class="token number">16</span><span class="token punctuation">]</span>
+</code></pre><h5 id="bar">@bar </h5>
+<pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:)Syntax</span>
+@bar <span class="token comment">//Used to isolate contextual optimizations and be able to locate the results of optimizations for a particular piece of code.</span>
+</code></pre><pre data-role="codeBlock" data-info="c" class="language-c c"><code><span class="token comment">//:) Case 1</span>
+@icall _dsp_axpy<span class="token punctuation">,</span> X<span class="token punctuation">,</span>Y<span class="token punctuation">,</span> N <span class="token punctuation">,</span>alpha<span class="token punctuation">,</span><span class="token operator">=</span>res
+@bar  
+@icall _print<span class="token punctuation">,</span><span class="token number">0x400000000</span><span class="token punctuation">,</span><span class="token number">8192</span><span class="token operator">*</span><span class="token number">4</span>
+
+<span class="token comment">//:) Case 2</span>
+LOOP<span class="token operator">:</span> <span class="token number">1</span><span class="token punctuation">,</span> <span class="token number">100</span>
+  @bar
+  @icall dat_copy<span class="token punctuation">,</span> CHANNEL0<span class="token punctuation">,</span> addrX<span class="token operator">+</span>CORE_ID<span class="token operator">*</span>N_INC<span class="token punctuation">,</span> <span class="token number">0X11</span><span class="token punctuation">,</span> <span class="token number">0X12</span><span class="token punctuation">,</span> <span class="token number">0x13</span>
+<span class="token punctuation">[</span>c<span class="token punctuation">]</span> SSUB <span class="token number">1</span><span class="token punctuation">,</span> c<span class="token punctuation">,</span> c
+<span class="token punctuation">[</span>c<span class="token punctuation">]</span> SBR LOOP
+<span class="token comment">//The function dat_copy after inlining will be blocked by @bar and not raised outside the loop.</span>
+</code></pre><h4 id="one-more-thing">One More Thing </h4>
+<p>In LASM IR, pseudo-operations can be categorized into global pseudo-operations, local pseudo-operations and free pseudo-operations according to their scope. The global or localized nature of a symbol is determined by the internal or external position of its pseudo-operation relative to the function body. Local pseudo-operations can only be used inside the function body, global pseudo-operations can only be used outside the function body, and free pseudo-operations have no limitation on the scope of use.</p>
+<p>a) Global Pseudo-operation：@func, @main, @sect, @usect, @align, @import.<br>
+b) Local Pseudo-operation: label:, @mdep, @ret, @call, @icall, @asg, @icp, @bar, @dreg.<br>
+c) Free Pseudo-operation：@bN, @bh, @bf, @bd.</p>
+<p>Note that for free pseudo-operations, the associated symbols are localized if they are used inside the function body, and global if they are used outside the function body.</p>
+
+      </div>
+      
+      
+    
+    
+    
+    
+    
+    
+  
+    </body></html>
