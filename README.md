@@ -1,5 +1,5 @@
 # LASM
-> 🫠 Stay tuned! We're preparing to open-source this project, but some code cleanup is still in progress.
+> 🫠 Stay tuned! We're preparing to open-source this project.
 
 
 ## Acknowledgement
