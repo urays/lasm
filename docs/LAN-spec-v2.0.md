@@ -10,8 +10,6 @@
 - [Pseudo-Operations](#pseudo-operations)
 - [Constants and Expressions](#constants-and-expressions)
 - [Program Structure](#program-structure)
-- [Examples](#examples)
-- [Appendix: Potato Processor Overview](#appendix-potato-processor-overview)
 
 ## Introduction
 
