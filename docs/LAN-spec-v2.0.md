@@ -323,6 +323,19 @@ Define symbols with N-bit storage (1 ≤ N ≤ 64):
 @usect ".bss", buffer, @b32, 128       // Reserve 128 32-bit elements
 ```
 
+**Advanced Examples - Combining Constants**:
+```c
+// String and character processing
+@sect ".data", x, @b8, "ab", 'c'    // 'ab', 'c' -> 0x6162, 0x63 -> 0x62, 0x63
+@sect ".data", x, @b4, "ab", 'c'    // 'ab', 'c' -> 0x6162, 0x63 -> 0x2, 0x3
+@b1 x, "ab"                         // 'ab' -> 0x00
+@b1 x, 'c'                          // 'c' -> 0x01
+@sect ".data", x, @b16, 'a'<< 4+'b', 'c'<<4+'d'  // 0x6162, 0x6364
+
+// Expression evaluation
+@sect ".data", x, @b9, 0x2, -0b10, 6*(3+2)  // 0x0002, 0x01fe, 0x001e; x.gra=2Byte
+```
+
 #### @bh, @bf, @bd - Floating-Point Storage
 
 IEEE754 floating-point constants with specific precisions:
@@ -388,6 +401,15 @@ Multiple floating-point values can be packed into wider storage:
 ```c
 mov 0xBF800000BF800000, alpha    // Two -1.0f values packed
 mov 0x3F8000003F800000, beta     // Two 1.0f values packed
+```
+
+**String and Expression Examples**:
+
+```c
+// Floating-point types with strings/characters
+@sect ".data", x, @bd, "ab", 'c'  // 0x4058400000000000, 0x4058800000000000
+@bf x, 3+0x4*(1.2-0.384)-'a'      // -> @bf x, -2.736  -> x=0xC02F1AA0
+@sect ".data", x, @bd, 6*(3+2), 6*(3+2.0)  // 0x403E000000000000, 0x403E000000000000
 ```
 
 ### Segment Management
@@ -1590,8 +1612,13 @@ Strings are sequences of characters:
 
 **Behavior in Pseudo-Operations**:
 ```c
-@b32 x, "abc"           // 'a','b','c' concatenated -> 0x00616263
-@sect ".data", arr, @b8, "ab", 'c'  // Stores: 0x62, 0x63
+@b32 x, "abc"                       // -> 'a', 'b', 'c' -> 0x616263 -> 0x00616263
+@b32 y, 'a'<< 4+'b'                 // ->  0x6162 -> 0x00006162
+@sect ".data", addx,@b8, "ab", 'c'  // 'ab', 'c' -> 0x6162, 0x63 -> 0x62, 0x63
+@sect ".data", addx, @b4 "ab", 'c'  // 'ab', 'c' -> 0x6162, 0x63 -> 0x2, 0x3
+@b1 x, 'c'                          // 'c' -> 0x01
+@b1 y, "ab"                         // 'ab' -> 0x00
+@sect ".data", addx, @b16,'a'<< 4+'b', 'c'<<4+'d'  // 0x6162, 0x6364
 ```
 
 Strings are concatenated into integers, then stored according to the specified bit width. High-order bits are truncated if the string exceeds the width.
