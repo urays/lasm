@@ -1,0 +1,30 @@
+@sect ".text"
+@func _sgemm_64_mul_and_add addrA,addrB,addrC,M,K,N {
+		mov 	M, i ;6
+		mov		addrA, ar_a			      	
+		mov		addrC, ar_c	
+_LOOP_M:   
+		mov		addrB, ar_b	
+		mov 	 	K, k                 ;512
+        vmov		0, ab_0
+		vmov		0, ab_1
+_LOOP_K: 512, 512
+		load		*ar_a++, a_1
+		bcast 	    a_1, a_N
+		vload		*ar_b++[16], b_1:b_0  ;  b_1:b_0 = 4 * 16 FP32
+		;;;
+		vmul        b_0, a_N, t0
+		vadd        t0, ab_0, ab_0
+		vmul        b_1, a_N, t1
+		vadd        t1, ab_1, ab_1
+		;;;
+  [k]   sub		1, k, k
+  [k]   br			_LOOP_K
+		vload		*ar_c, c_1:c_0
+		vsub	    ab_0, c_0, c_0
+		vsub	    ab_1, c_1, c_1
+		vstor		c_1:c_0, *ar_c++[16]
+  [i]   sub 1, i, i
+  [i]   br _LOOP_M
+    @ret
+}

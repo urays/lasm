@@ -1,0 +1,19 @@
+struct MACHINE_LIMITS {
+    //@ restrictions on instruction execution packages. 
+	//Example: static bool INSTEXECPACK(INST_BITN_CNT_MAP& MPBITS) {
+	//	size_t _size = 0;
+	//	if(MPBITS[80] > 4) {
+	//		return false;
+	//	}
+	//	for(const auto& _item: MPBITS) {
+	//		_size += (static_cast<size_t>(_item.first) * _item.second);
+	//	}
+	//	if(_size > 480){
+	//		return false;
+	//	}
+	//	return true;
+	//}
+	static bool INSTEXECPACK(INST_BITN_CNT_MAP& MPBITS) {
+		return true;
+	}
+};

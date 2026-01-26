@@ -1,0 +1,287 @@
+// template
+#ifndef MCODE_META
+#define MCODE_META(id_, parm_tar_mnic_) void meta_##id_()
+#endif
+#ifndef MCODE_INST
+#define MCODE_INST(id_) void inst_##id_()
+#endif
+// utils
+#ifndef ENCODE
+#define ENCODE(bin_)
+#endif
+#ifndef CASE_IF
+#define CASE_IF(cond_, ENCODE_)
+#endif
+#ifndef PREFIX
+#define PREFIX(parm_tar_mnic_) std::string()
+#endif
+#ifndef NUMBER
+#define NUMBER(parm_tar_mnic_) -1
+#endif
+#ifndef BINSTR
+#define BINSTR(num_dec_, bitn_) std::string()
+#endif
+#ifndef TAKE_H
+#define TAKE_H(text_, bitn_) std::string()
+#endif
+#ifndef TAKE_L
+#define TAKE_L(text_, bitn_) std::string()
+#endif
+// macro
+#ifndef INSTMNIC  // instruction memonic
+#define INSTMNIC std::string()
+#endif
+// mcode
+#ifndef MCODE_OPCODE  // instruction operatin code
+#define MCODE_OPCODE(bitn_) std::string()
+#endif
+#ifndef MCODE_OP1
+#define MCODE_OP1(bitn_, metaid_, regconvid_) std::string()
+#endif
+#ifndef MCODE_OP2
+#define MCODE_OP2(bitn_, metaid_, regconvid_) std::string()
+#endif
+#ifndef MCODE_OP3
+#define MCODE_OP3(bitn_, metaid_, regconvid_) std::string()
+#endif
+#ifndef MCODE_OP4
+#define MCODE_OP4(bitn_, metaid_, regconvid_) std::string()
+#endif
+#ifndef MCODE_CREG  // conditional physical register
+#define MCODE_CREG(bitn_, convid_) std::string()
+#endif
+#ifndef MCODE_Z
+#define MCODE_Z(bitn_) std::string()
+#endif
+#ifndef MCODE_U
+#define MCODE_U(bitn_, convid_) std::string()
+#endif
+#ifndef MCODE_P
+#define MCODE_P(bitn_) std::string()
+#endif
+#ifndef MCODE_V
+#define MCODE_V(bitn_) std::string()
+#endif
+#ifndef MCODE_LSMODE
+#define MCODE_LSMODE(bitn_, convid_) std::string()
+#endif
+
+//@functional unit
+MCODE_META(0, U) {  // 3 bits
+    CASE_IF(U == "A1", ENCODE("101"));
+    CASE_IF(U == "B1", ENCODE("001"));
+    CASE_IF(U == "C1", ENCODE("010"));
+    CASE_IF(U == "C2", ENCODE("100"));
+    CASE_IF(U == "D1", ENCODE("000"));
+    CASE_IF(U == "E1", ENCODE("000"));
+    CASE_IF(U == "E2", ENCODE("001"));
+    CASE_IF(U == "E3", ENCODE("010"));
+    CASE_IF(U == "E4", ENCODE("011"));
+}
+
+MCODE_META(1, U) {  // 2 bits
+    CASE_IF(U == "E1", ENCODE(BINSTR(NUMBER(U), 2)));
+    CASE_IF(U == "E2", ENCODE(BINSTR(NUMBER(U), 2)));
+    CASE_IF(U == "E3", ENCODE(BINSTR(NUMBER(U), 2)));
+    CASE_IF(U == "E4", ENCODE(BINSTR(NUMBER(U), 2)));
+
+    CASE_IF(U == "C2" && INSTMNIC == "SMVAIA", ENCODE("11"));
+    CASE_IF(U == "C1", ENCODE("00"));
+    CASE_IF(U == "C2", ENCODE("01"));
+    CASE_IF(U == "SMAC2", ENCODE("10"));
+}
+
+//@normal pyhsical register
+MCODE_META(2, REG) {
+    CASE_IF(PREFIX(REG) == "AR", ENCODE("00" + BINSTR(NUMBER(REG), 4)));
+    CASE_IF(PREFIX(REG) == "OR", ENCODE("01" + BINSTR(NUMBER(REG), 4)));
+    CASE_IF(PREFIX(REG) == "VR", ENCODE(BINSTR(NUMBER(REG), 6)));
+    CASE_IF(PREFIX(REG) == "R", ENCODE(BINSTR(NUMBER(REG), 6)));
+    CASE_IF(REG == "SVR", ENCODE("001000"));
+    CASE_IF(PREFIX(REG) == "SVR", ENCODE("00" + BINSTR(NUMBER(REG), 4)));
+    CASE_IF(REG == "VST", ENCODE("000000"));
+    CASE_IF(REG == "VFCR1", ENCODE("000001"));
+    CASE_IF(REG == "VFCR2", ENCODE("000010"));
+    CASE_IF(REG == "VFCR3", ENCODE("000011"));
+    CASE_IF(REG == "VECR", ENCODE("000100"));
+    CASE_IF(REG == "VFCR0", ENCODE("000101"));
+    CASE_IF(REG == "VCR", ENCODE("011011"));
+    CASE_IF(REG == "VPreheatR", ENCODE("011010"));
+    CASE_IF(REG == "VLR", ENCODE("011101"));
+    CASE_IF(REG == "SST", ENCODE("010000"));
+    CASE_IF(REG == "SFCR1", ENCODE("010001"));
+    CASE_IF(REG == "SFCR2", ENCODE("010010"));
+    CASE_IF(REG == "SCR", ENCODE("010100"));
+    CASE_IF(REG == "SECR", ENCODE("011110"));
+    CASE_IF(REG == "IER", ENCODE("100000"));
+    CASE_IF(REG == "IFR", ENCODE("100001"));
+    CASE_IF(REG == "ICR", ENCODE("100001"));
+    CASE_IF(REG == "IRR", ENCODE("100010"));
+    CASE_IF(REG == "ISTP", ENCODE("100011"));
+    CASE_IF(REG == "EER", ENCODE("100100"));
+    CASE_IF(REG == "EFR", ENCODE("100101"));
+    CASE_IF(REG == "ECR", ENCODE("100101"));
+    CASE_IF(REG == "ERR", ENCODE("100110"));
+    CASE_IF(REG == "ESTP", ENCODE("100111"));
+    CASE_IF(REG == "CGCR", ENCODE("101000"));
+    CASE_IF(REG == "CVCCR", ENCODE("101001"));
+}
+
+//@physical register for load/store instructions
+MCODE_META(3, LSREG) { 
+    CASE_IF(PREFIX(LSREG) == "AR", ENCODE("0" + BINSTR(NUMBER(LSREG), 3)));
+    CASE_IF(PREFIX(LSREG) == "OR", ENCODE("1" + BINSTR(NUMBER(LSREG), 3)));
+}
+
+//@conditional physical register
+MCODE_META(4, CREG) { //R0:001 R1:010
+    CASE_IF(PREFIX(CREG) == "R", ENCODE(BINSTR(NUMBER(CREG) + 1, 3)));
+    CASE_IF(PREFIX(CREG) == "VR", ENCODE(BINSTR(NUMBER(CREG) + 1, 3)));
+    CASE_IF(CREG == "", ENCODE("000"));
+}
+
+MCODE_META(5, LSMODE) {
+    CASE_IF(LSMODE == "MAXX", ENCODE("1000"));
+    CASE_IF(LSMODE == "MSXX", ENCODE("1001"));
+    CASE_IF(LSMODE == "MAAXX", ENCODE("1010"));
+    CASE_IF(LSMODE == "MSSXX", ENCODE("1011"));
+    CASE_IF(LSMODE == "MXAAX", ENCODE("1110"));
+    CASE_IF(LSMODE == "MXSSX", ENCODE("1111"));
+    CASE_IF(LSMODE == "MAXI", ENCODE("0000"));
+    CASE_IF(LSMODE == "MSXI", ENCODE("0001"));
+    CASE_IF(LSMODE == "MAAXI", ENCODE("0010"));
+    CASE_IF(LSMODE == "MSSXI", ENCODE("0011"));
+    CASE_IF(LSMODE == "MXAAI", ENCODE("0110"));
+    CASE_IF(LSMODE == "MXSSI", ENCODE("0111"));
+}
+
+MCODE_META(6, LSREG_LONG) {
+    CASE_IF(LSREG_LONG == "AR12", ENCODE("00"));
+    CASE_IF(LSREG_LONG == "AR13", ENCODE("01"));
+    CASE_IF(LSREG_LONG == "AR14", ENCODE("10"));
+    CASE_IF(LSREG_LONG == "AR15", ENCODE("11"));
+    CASE_IF(LSREG_LONG == "AR4", ENCODE("00"));
+    CASE_IF(LSREG_LONG == "AR5", ENCODE("01"));
+    CASE_IF(LSREG_LONG == "AR6", ENCODE("10"));
+    CASE_IF(LSREG_LONG == "AR7", ENCODE("11"));
+}
+
+MCODE_INST(0) {  // SBR_01  40
+    ENCODE("0001000000000000000000" + MCODE_OPCODE(10) + "1011110" +
+           MCODE_P(1));
+}
+
+MCODE_INST(1) {  // SBR_R  40
+    ENCODE(MCODE_CREG(3, 4) + MCODE_Z(1) + "000000" + MCODE_OP1(6, 0, 2) +
+           "000000" + MCODE_OPCODE(10) + "1011110" + MCODE_P(1));
+}
+
+MCODE_INST(2) {  // SBR_SIRET  40
+    ENCODE("000100000000000" + MCODE_OP1(1, 0, -1) + "00000000000000001011110" +
+           MCODE_P(1));
+}
+
+MCODE_INST(3) {  // SBR_LABEL  40
+    ENCODE(MCODE_CREG(3, 4) + MCODE_Z(1) + MCODE_OP1(29, 0, -1) +
+           MCODE_OPCODE(2) + "1100" + MCODE_P(1));
+}
+
+MCODE_INST(4) {  // SBR_IMM  40
+    ENCODE(MCODE_CREG(3, 4) + MCODE_Z(1) + "000000" + MCODE_OP1(6, 0, -1) + "000000" + MCODE_OPCODE(10) +
+           "10111100");
+}
+
+MCODE_INST(5) {  // MOVI SMAC1_SMVAIA  80
+    ENCODE(TAKE_H(MCODE_OP1(64, 0, -1), 40) + MCODE_CREG(3, 4) + MCODE_Z(1) +
+           MCODE_OP2(6, 0, 2) + TAKE_L(MCODE_OP1(64, 0, -1), 24) +
+           MCODE_U(2, 1) + "01" + MCODE_V(1) + MCODE_P(1));
+}
+
+MCODE_INST(6) {  // IMM_PARAM4 40
+    ENCODE(MCODE_CREG(3, 4) + MCODE_Z(1) + MCODE_OP4(6, 0, 2) +
+           MCODE_OP1(6, 0, -1) + MCODE_OP2(6, 0, 2) + MCODE_OP3(6, 0, 2) +
+           MCODE_OPCODE(5) + MCODE_U(2, 1) + "011" + MCODE_V(1) + MCODE_P(1));
+}
+
+MCODE_INST(7) {  // R_PARAM4 40
+    ENCODE(MCODE_CREG(3, 4) + MCODE_Z(1) + MCODE_OP4(6, 0, 2) +
+           MCODE_OP1(6, 0, 2) + MCODE_OP2(6, 0, 2) + MCODE_OP3(6, 0, 2) +
+           MCODE_OPCODE(5) + MCODE_U(2, 1) + "011" + MCODE_V(1) + MCODE_P(1));
+}
+
+MCODE_INST(8) {  // IMM_RESERVED 40
+    ENCODE(MCODE_CREG(3, 4) + MCODE_Z(1) + MCODE_OP2(6, 0, 2) + "000000" +
+           MCODE_OP1(6, 0, -1) + MCODE_OPCODE(10) + MCODE_U(3, 0) + "111" +
+           MCODE_V(1) + MCODE_P(1));
+}
+
+MCODE_INST(9) {  // R_RESERVED 40
+    ENCODE(MCODE_CREG(3, 4) + MCODE_Z(1) + MCODE_OP2(6, 0, 2) + "000000" +
+           MCODE_OP1(6, 0, 2) + MCODE_OPCODE(10) + MCODE_U(3, 0) + "111" +
+           MCODE_V(1) + MCODE_P(1));
+}
+
+MCODE_INST(10) {  // MOVI24 LABLEMOVI24 40
+    ENCODE(MCODE_CREG(3, 4) + MCODE_Z(1) + MCODE_OP2(6, 0, 2) +
+           MCODE_OP1(24, 0, -1) + MCODE_U(2, 1) + "00" + MCODE_V(1) +
+           MCODE_P(1));
+}
+
+MCODE_INST(11) {  // IMM_R_R 40
+    ENCODE(MCODE_CREG(3, 4) + MCODE_Z(1) + MCODE_OP3(6, 0, 2) +
+           MCODE_OP1(6, 0, -1) + MCODE_OP2(6, 0, 2) + MCODE_OPCODE(10) +
+           MCODE_U(3, 0) + "111" + MCODE_V(1) + MCODE_P(1));
+}
+
+MCODE_INST(12) {  // MAC_R R_R_R 40
+    ENCODE(MCODE_CREG(3, 4) + MCODE_Z(1) + MCODE_OP3(6, 0, 2) +
+           MCODE_OP1(6, 0, 2) + MCODE_OP2(6, 0, 2) + MCODE_OPCODE(10) +
+           MCODE_U(3, 0) + "111" + MCODE_V(1) + MCODE_P(1));
+}
+
+// LDST_OR
+MCODE_INST(13) {  // LOAD_OR 40
+    ENCODE(MCODE_CREG(3, 4) + MCODE_Z(1) + MCODE_OP2(6, 0, 2) +
+           MCODE_OP1(4, 1, 3) + MCODE_OP1(4, 0, 3) + "000000" +
+           MCODE_LSMODE(4, 5) + MCODE_OPCODE(4) + MCODE_U(3, 0) + "111" +
+           MCODE_V(1) + MCODE_P(1));
+}
+
+MCODE_INST(14) {  // STOR_OR 40
+    ENCODE(MCODE_CREG(3, 4) + MCODE_Z(1) + MCODE_OP1(6, 0, 2) +
+           MCODE_OP2(4, 1, 3) + MCODE_OP2(4, 0, 3) + "000000" +
+           MCODE_LSMODE(4, 5) + MCODE_OPCODE(4) + MCODE_U(3, 0) + "111" +
+           MCODE_V(1) + MCODE_P(1));
+}
+
+// LDST_IMML
+MCODE_INST(15) {  // LOAD_IMML 40
+    ENCODE(MCODE_CREG(3, 4) + MCODE_Z(1) + MCODE_OP2(6, 0, 2) +
+           MCODE_OP1(4, 1, 3) + MCODE_OP1(10, 0, -1) + MCODE_LSMODE(4, 5) +
+           MCODE_OPCODE(4) + MCODE_U(3, 0) + "111" + MCODE_V(1) + MCODE_P(1));
+}
+
+MCODE_INST(16) {  // STOR_IMML 40
+    ENCODE(MCODE_CREG(3, 4) + MCODE_Z(1) + MCODE_OP1(6, 0, 2) +
+           MCODE_OP2(4, 1, 3) + MCODE_OP2(10, 0, -1) + MCODE_LSMODE(4, 5) +
+           MCODE_OPCODE(4) + MCODE_U(3, 0) + "111" + MCODE_V(1) + MCODE_P(1));
+}
+
+// LDST_IMMH
+MCODE_INST(17) {  // LOAD_IMMH 40
+    ENCODE(MCODE_CREG(3, 4) + MCODE_Z(1) + MCODE_OP2(6, 0, 2) +
+           MCODE_OP1(18, 0, -1) + MCODE_OPCODE(4) + MCODE_OP1(2, 1, 6) +
+           TAKE_L(MCODE_U(3, 0), 1) + "010" + MCODE_V(1) + MCODE_P(1));
+}
+
+MCODE_INST(18) {  // STOR_IMMH 40
+    ENCODE(MCODE_CREG(3, 4) + MCODE_Z(1) + MCODE_OP1(6, 0, 2) +
+           MCODE_OP2(18, 0, -1) + MCODE_OPCODE(4) + MCODE_OP2(2, 1, 6) +
+           TAKE_L(MCODE_U(3, 0), 1) + "010" + MCODE_V(1) + MCODE_P(1));
+}
+
+MCODE_INST(19) {  //SMCMPEQ 40
+    ENCODE(MCODE_CREG(3, 4) + MCODE_Z(1) + MCODE_OP3(6, 0, 2) +
+           MCODE_OP1(4, 0, 3) + MCODE_OP2(4, 0, 3) + "0000000000" +
+           MCODE_OPCODE(4) + "100111" + MCODE_V(1) + MCODE_P(1));
+}

@@ -1,0 +1,6 @@
+//@@@ HANDLE_REGISTER(prefix, bw, s0, e0, s1, e1, en2, alc)
+
+HANDLE_REGISTER(R,         64, 0, 63, 0, 0,  0, 1)
+HANDLE_REGISTER(AR,        36, 0, 15, 0, 0,  0, 1)
+HANDLE_REGISTER(OR,        36, 0, 15, 0, 0,  0, 1)
+HANDLE_REGISTER(VR,        64, 0, 63, 0, 15, 0, 1)
