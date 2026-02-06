@@ -1,0 +1,37 @@
+BasedOnStyle: Google
+AlwaysBreakTemplateDeclarations: Yes
+AllowShortBlocksOnASingleLine: true
+AllowShortIfStatementsOnASingleLine: true
+AllowShortLoopsOnASingleLine: true
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+AccessModifierOffset: -4
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+BinPackArguments: true
+BinPackParameters: false
+AlignAfterOpenBracket: BlockIndent
+AlignOperands: Align
+BreakBeforeBinaryOperators: None
+AlignConsecutiveMacros: Consecutive
+BreakBeforeBraces: Custom
+BraceWrapping:
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+  AfterFunction: false
+  AfterControlStatement: false
+  AfterClass: false
+  AfterStruct: false
+  AfterUnion: false
+  AfterNamespace: false
+  BeforeWhile: false 
+  BeforeElse: false
+  BeforeLambdaBody: false 
+  AfterExternBlock: false
+ColumnLimit: 120
+MaxEmptyLinesToKeep: 1
+KeepEmptyLinesAtTheStartOfBlocks: false
+SpaceInEmptyParentheses: false
+SpacesBeforeTrailingComments: 1
