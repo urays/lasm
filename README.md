@@ -5,8 +5,8 @@
     <code>&nbsp;&nbsp;|&nbsp;&nbsp;|__|&nbsp;|_|&nbsp;|__&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;|&nbsp;&nbsp;|</code><br>
     <code>&nbsp;&nbsp;|_____|&nbsp;___&nbsp;|_____|_&nbsp;|&nbsp;_|</code>
   </p>
-  <p><strong>VLIW ASSEMBLY SCHEDULING MACHINE.</strong></p>
-  <p>LASM compiles LAN symbolic assembly into scheduled VLIW assembly. This public artifact provides the LAN specification, a runnable Linux x86_64 binary, and a non-confidential Potato VLIW target for trying the scheduling workflow.</p>
+  <p><strong>🐌 VLIW ASSEMBLY SCHEDULING MACHINE.</strong></p>
+  <p>LASM compiles LAN symbolic assembly into scheduled VLIW assembly. This public artifact provides the LAN specification, a runnable Linux x86_64 binary, and a Potato VLIW target for trying the scheduling workflow.</p>
 
   <p>
     <img alt="Artifact" src="https://img.shields.io/badge/Artifact-Public-2ea44f">
