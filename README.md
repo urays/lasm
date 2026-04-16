@@ -60,7 +60,6 @@ Useful commands:
 | Example LAN programs | Available | GEMM examples under `example-potato/lan4test/` |
 | Full LASM source tree | Pending | Awaiting institutional review and removal of confidentiality-restricted components |
 | LLVM-based public source release | In preparation | Source release information will be announced in this repository after review |
-| Production processor descriptions | Not included | Restricted by confidentiality and third-party constraints |
 
 ## Scope
 
