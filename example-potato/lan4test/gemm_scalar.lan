@@ -1,0 +1,29 @@
+
+@sect ".text"
+@func _sample_code addrA,addrB,addrC,M,N,K{
+	mov addrA, aA
+	mov addrB, aB
+	mov addrC, aC
+	mov M, i
+_LOOP_M: 
+    mov N, j
+    _LOOP_N:512,512
+	    mov 0, ts
+		mov K, k
+	    _LOOP_K: 64,64
+		    load *aA++[1], ta  
+	        load *aB++[1], tb  
+	        mul ta, tb, t    
+	        add t, ts, ts  
+	        sub 1, k, k
+            [k] br _LOOP_K
+		load *aC++[1], tc
+        sub ts, tc, tc
+        stor tc, *aC
+	    sub 1, j, j
+        [j] br _LOOP_N
+	sub 1, i, i
+    [i] br _LOOP_M
+    
+	@ret
+}

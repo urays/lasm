@@ -1,0 +1,9 @@
+CompileFlags:
+  CompilationDatabase: build
+  Add:
+    - -fexceptions
+  Remove:
+    - -fno-exceptions
+
+Diagnostics:
+  UnusedIncludes: Strict

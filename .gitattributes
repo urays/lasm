@@ -1,0 +1,30 @@
+# Default behavior: auto-detect text files and normalize to LF
+* text=auto eol=lf
+
+# Explicitly mark source code files
+*.cpp text eol=lf
+*.cc text eol=lf
+*.c text eol=lf
+*.h text eol=lf
+*.hpp text eol=lf
+*.td text eol=lf
+*.py text eol=lf
+*.sh text eol=lf
+*.md text eol=lf
+*.cmake text eol=lf
+CMakeLists.txt text eol=lf
+
+# Configuration files
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.toml text eol=lf
+
+# Binary files (explicitly mark as binary)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary
+*.so binary
+*.a binary
+*.o binary
