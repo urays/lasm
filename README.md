@@ -29,11 +29,13 @@
 
 </div>
 
-> Complexity does not disappear, but it can be shifted. LASM uses LAN, a symbolic assembly interface, to separate VLIW-specific scheduling from the rest of compilation, letting VLIW designers do what they do best and mainstream general-purpose compiler toolchains do what they do best.
+> Complexity does not disappear, but it can be shifted. LASM uses LAN, a symbolic assembly interface, to separate VLIW-specific scheduling from the rest of compilation. This lets VLIW designers and mainstream general-purpose compiler toolchains each play to their strengths.
 
-LASM is an extensible symbolic-assembly scheduling framework for complete VLIW programs. Programs are expressed in **VLIW Assembly Notation (LAN)** as raw ISA instructions with symbolic operands, while physical-register bindings, functional-unit assignments, and bundle formation may remain unspecified. LASM lowers this representation to cycle-assigned instruction bundles with fully resolved resource bindings. Multiple strategies generate candidate schedules for identical code regions, after which two-tier feasibility filtering selects the highest-ranked implementable schedule.
+LASM is an extensible scheduling framework for complete VLIW programs expressed in symbolic assembly. Its input language, **VLIW Assembly Notation (LAN)**, uses target ISA instructions with symbolic operands. Physical register bindings, functional unit assignments, and instruction bundling can be specified where needed and left to LASM elsewhere. LASM produces scheduled VLIW assembly with explicit cycle assignments and fully resolved resource bindings.
 
-Built on the **Stratified Assembly Structure (SAS)**, LASM maintains mixed scheduling states across complete programs and provides standardized extension interfaces and unified scheduling primitives for strategy integration. The framework incorporates TDLS, IMS, and EMS, and introduces LAEMS and FBBF for cross-boundary scheduling. Across 13 benchmarks on two production VLIW-SIMD processors, LASM achieves 103.6% and 101.6% of expert assembly performance while reducing manually written assembly by 72.6%. An end-to-end YOLOv5 deployment reaches 95.9% of expert performance and delivers a 3× productivity improvement.
+Multiple strategies compete to schedule the same code region. LASM ranks their candidates by scheduling quality and register demand, then selects the highest-ranked feasible schedule. Its internal representation, the **Stratified Assembly Structure (SAS)**, allows scheduled and unscheduled code to coexist within a function. Standardized extension interfaces and reusable scheduling primitives help developers add new strategies. Alongside implementations of TDLS, IMS, and EMS, LASM introduces **LAEMS** for software pipelining and **FBBF** for scheduling across block boundaries.
+
+In the paper’s evaluation across 13 benchmarks on two production VLIW-SIMD processors, LASM achieves geometric mean performance ratios of **103.6%** and **101.6%** relative to assembly hand-optimized by experts. LAN implementations use **72.6% fewer source lines** in total than the corresponding handwritten assembly implementations, excluding blank lines. An end-to-end YOLOv5 deployment reaches **95.9%** of expert assembly performance while reducing implementation effort from **9 to 3 engineer-weeks**.
 
 ## Quick Start
 
