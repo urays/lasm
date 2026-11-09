@@ -1,7 +1,7 @@
 # 🌞 Hello! LAN
 
 > Version: 2.0
-> Last Updated: 2026-01-20
+> Last Updated: 2026-04-27
 
 ## Table of Contents
 - [Introduction](#introduction)
@@ -17,7 +17,7 @@
 
 VLIW Assembly Notation (LAN) is a symbolic assembly language designed for Very Long Instruction Word (VLIW) architectures. It operates at the **symbolic assembly level**—an abstraction where programmers write actual ISA instruction mnemonics while using symbolic variables and optionally omitting low-level resource binding details such as register allocation, functional unit assignment, and instruction parallelism.
 
-LAN is the input language for the LASM (VLIW Assembly Scheduling Machine) framework, an extensible competitive scheduling framework that supports multi-strategy compilation. The framework respects all user-provided specifications while automatically handling omitted details. It transforms LAN code through stratified assembly structures (SAS) that maintain mixed scheduling states, enabling sophisticated optimizations while preserving user-specified constraints.
+LAN is the input language for the LASM (VLIW Assembly Scheduling Machine) framework, an extensible competitive scheduling framework that supports multi-strategy compilation. The framework respects all user-provided specifications while automatically handling omitted details. It transforms LAN code through stratified assembly structures (SAS) that maintain mixed scheduling states, enabling optimization while preserving user-specified constraints.
 
 ### Design Philosophy
 
@@ -25,32 +25,30 @@ LAN is the input language for the LASM (VLIW Assembly Scheduling Machine) framew
 2. **Selective Specification**: Explicitly control parallelism, functional units, and registers where needed, omit where convenient
 3. **Simplicity**: Concise pseudo-operation set (`@`-prefixed directives) for program structure
 4. **Modularity**: Multi-file support with function imports and separate compilation
-5. **Optimization-Friendly**: Designed to integrate with advanced scheduling strategies (LAEMS, FBBF, etc.)
+5. **Optimization-Friendly**: Designed to work with LASM's scheduling strategies (LAEMS, FBBF, etc.)
 
 ### Key Features
 
 - **Implicit Variable Declaration**: Variables are implicitly declared on first use, remaining symbolic until register allocation
 - **Optional Resource Specification**: Users may specify instruction bundling (`|`), functional units (`.UNIT`), physical registers (`@asg`), or delegate these to LASM
 - **Conditional Execution**: First-class support for predicated instructions
-- **Rich Constant System**: Integer, floating-point, character, and expression constants with IEEE754 compliance
-- **Label Annotations**: Loop iteration bounds for advanced optimizations
+- **Constant System**: Integer, floating-point, character, and expression constants with IEEE754 compliance
+- **Label Annotations**: Loop iteration bounds for loop optimizations
 
 
 ## Lexical Structure
 
 ### Comments
 
-LAN supports two comment styles:
+A semicolon starts a comment that ends at the end of the line:
 
 ```c
-// C-style single-line comment
-mov 0, x     // End-of-line comment
-
 ; Assembly-style comment
-sub 1, k, k  ;count1=n
+mov 0, x     ; End-of-line comment
 ```
 
-Both comment styles terminate at the end of the line.
+Comment delimiters inside quoted character or string literals are literal characters.
+`//` is the integer-division operator; it does not start a comment.
 
 ### Identifiers
 
@@ -59,7 +57,7 @@ Identifiers for variables, labels, and functions follow these rules:
 **Syntax**: `^[a-zA-Z_][a-zA-Z0-9_]*`
 
 ```c
-// Valid identifiers
+; Valid identifiers
 counter
 loop_start
 _LOOP_M
@@ -67,11 +65,14 @@ ar_a
 v_alpha
 ```
 
-**Note**: LAN identifiers are **case-sensitive**. However, machine-defined register names are case-insensitive (e.g., `r0` = `R0`, `ar8` = `AR8`).
+**Note**: LAN identifiers, instruction mnemonics, physical register names, and functional unit names are **case-sensitive**. The selected machine description defines all three machine name sets, including register prefixes and number ranges. With the Potato description, `R10` is physical and `r10` is a symbolic variable. A target that defines lowercase register names uses those exact lowercase names; LASM does not impose an uppercase naming convention.
+
+`END` has no special keyword status. Like any other identifier, it may name a user symbol unless the selected machine reserves that exact name.
 
 ### Reserved Symbols
 
 - **Pseudo-operations**: All symbols prefixed with `@` (e.g., `@func`, `@ret`, `@sect`)
+- **Instruction mnemonics**: Exact mnemonic names from the selected machine description cannot be used as user symbols. If the machine defines `SADD` but not `sadd`, only `SADD` is reserved by this rule; `sadd` remains available as a user symbol unless it is a physical register name.
 - **Parallelism operator**: `|`
 - **Conditional execution**: `[`, `]`, `!`
 - **Memory dereference**: `*`
@@ -93,8 +94,8 @@ The general format of a LAN instruction:
 
 Components:
 - **Condition** (optional): `[reg]` or `[!reg]` for conditional execution
-- **Mnemonic**: ISA-defined instruction name (case-insensitive)
-- **Functional Unit** (optional): `.UNIT` suffix specifying execution unit
+- **Mnemonic**: Case-sensitive instruction name from the selected machine description
+- **Functional Unit** (optional): `.UNIT` suffix with the exact spelling defined by that machine
 - **Operands**: Registers, variables, immediates, memory addresses
 - **Destination**: Target register or variable
 
@@ -103,26 +104,27 @@ Components:
 Instructions can execute conditionally based on register values:
 
 ```c
-// Positive condition: execute if register is non-zero
-[k]  br _LOOP_K         // Branch if k != 0
-[c]  sub 1, c, c        // Decrement if c != 0
+; Positive condition: execute if register is non-zero
+[k]  br _LOOP_K         ; Branch if k != 0
+[c]  sub 1, c, c        ; Decrement if c != 0
 
-// Negative condition: execute if register is zero
-[!r0] mov 1, r1         // Move if r0 == 0
-[!k]  br END            // Branch if k == 0
+; Negative condition: execute if register is zero
+[!r0] mov 1, r1         ; Move if r0 == 0
+[!k]  br END            ; Branch if k == 0
 ```
 
-The condition register must be a scalar register (not a vector register).
+The condition register is scalar unless the target machine description explicitly permits a vector predicate for that instruction. The target's instruction and operand constraints determine the legal register class and range; a vector register is not automatically a valid predicate.
 
 ### Functional Unit Specification
 
 Explicitly assign instructions to functional units:
 
 ```c
-// Syntax: INSTRUCTION.UNIT operands...
+; Syntax: INSTRUCTION.UNIT operands...
 
-add .C1  r0, r1, r2     // Execute on C1 unit
-add .C2  r3, r4, r5     // Execute on C2 unit
+add .C1  r0, r1, r2     ; Execute on C1 unit
+add .C2  r3, r4, r5     ; Execute on C2 unit
+add .C2.C1  r3, r4, r5  ; Execute on C1+C2 unit
 ```
 
 When omitted, LASM automatically assigns functional units during scheduling.
@@ -132,16 +134,16 @@ When omitted, LASM automatically assigns functional units during scheduling.
 The `|` operator indicates instructions that should be bundled in the same VLIW instruction word:
 
 ```c
-// Sequential execution (two VLIW words)
+; Sequential execution (two VLIW words)
 vload *ar0++[16], b_1:b_0
 vmul b_0, a_N, t0
 
-// Parallel execution (one VLIW word)
+; Parallel execution (one VLIW word)
   vload *ar0++[16], b_1:b_0
 | vmul  b_0, a_N, t0
 ```
 
-The framework verifies resource conflicts and dependencies. When parallelism is not specified, LASM determines optimal bundling.
+The framework verifies resource conflicts and dependencies. When parallelism is not specified, LASM determines the bundling.
 
 ### Memory Addressing
 
@@ -163,9 +165,9 @@ Common addressing modes:
 The offset `[N]` can be an immediate constant or an offset register:
 
 ```c
-load *aA++[1], ta       // Increment by 1
-vload *ar_b++[16], b_1:b_0  // Increment by 16
-vload *ar++[or_0], v_1:v_0  // Increment by offset register
+load *aA++[1], ta       ; Increment by 1
+vload *ar_b++[16], b_1:b_0  ; Increment by 16
+vload *ar++[or_0], v_1:v_0  ; Increment by offset register
 ```
 
 ### Register Pairs
@@ -173,9 +175,9 @@ vload *ar++[or_0], v_1:v_0  // Increment by offset register
 Some instructions operate on register pairs for wider data:
 
 ```c
-// Syntax: high_register:low_register
-vload *ar_b++[16], b_1:b_0     // Load into pair b_1:b_0
-vstor c_1:c_0, *ar_c++[16]     // Store from pair c_1:c_0
+; Syntax: high_register:low_register
+vload *ar_b++[16], b_1:b_0     ; Load into pair b_1:b_0
+vstor c_1:c_0, *ar_c++[16]     ; Store from pair c_1:c_0
 ```
 
 Register pairs must follow the machine's pairing rules (typically consecutive registers).
@@ -185,47 +187,49 @@ Register pairs must follow the machine's pairing rules (typically consecutive re
 LAN allows mixing symbolic variables and physical register names:
 
 ```c
-// Symbolic variables (allocated by framework)
-mov M, i                // 'i' is a variable
-add 1, counter, counter // 'counter' is a variable
+; Symbolic variables (allocated by framework)
+mov M, i                ; 'i' is a variable
+add 1, counter, counter ; 'counter' is a variable
 
-// Physical registers (explicit binding)
-mov M, r0               // r0 is a physical scalar register
-mov addrA, ar0          // ar0 is a physical address register
+; Physical registers (explicit binding)
+mov M, R0               ; R0 is a physical scalar register
+mov addrA, AR0          ; AR0 is a physical address register
 
-// Mixed usage
-add r0, counter, result // Mix physical and symbolic
+; Mixed usage
+add R0, counter, result ; Mix physical and symbolic
 ```
 
 Physical registers are specified by machine description files. For Potato:
-- Scalar: `r0`-`r63` (or `R0`-`R63`)
-- Address: `ar0`-`ar15` (or `AR0`-`AR15`)
-- Offset: `or0`-`or15` (or `OR0`-`OR15`)
-- Vector: `vr0`-`vr63` (or `VR0`-`VR63`)
+- Scalar: `R0`-`R63`
+- Address: `AR0`-`AR15`
+- Offset: `OR0`-`OR15`
+- Vector: `VR0`-`VR63`
 
 ### Labels
 
 Labels mark program locations and optionally specify loop iteration bounds:
 
 ```c
-// Syntax
+; Syntax
 label_name:
 label_name: min_iteration[, max_iteration]
 
-// Identifier pattern
-// label_name: ^[a-zA-Z_][a-zA-Z0-9_]*
-// min_iteration: Minimum number of loop iterations (must be > 0)
-// max_iteration: Maximum number of loop iterations
+; Identifier pattern
+; label_name: ^[a-zA-Z_][a-zA-Z0-9_]*
+; min_iteration: Minimum number of loop iterations (must be > 0)
+; max_iteration: Maximum number of loop iterations
 
-// Examples
-_LOOP_M:                      // General label (no loop info)
-_LOOP_K: 64, 64               // Fixed 64 iterations
-_LOOP_N: 512, 512             // Fixed 512 iterations
-inner_loop: 10, 100           // 10-100 iterations
-LOOP_BASE: 1, 17              // Short loop path
-SGEMM_LOOP: 3, 384            // Matrix operation loop
-END:                          // Label for readability (no code follows)
+; Examples
+_LOOP_M:                      ; General label (no loop info)
+_LOOP_K: 64, 64               ; Fixed 64 iterations
+_LOOP_N: 512, 512             ; Fixed 512 iterations
+inner_loop: 10, 100           ; 10-100 iterations
+LOOP_BASE: 1, 17              ; Short loop path
+SGEMM_LOOP: 3, 384            ; Matrix operation loop
+END:                          ; Ordinary user label at the end of the code
 ```
+
+A label at the end of a function denotes the byte immediately after that function's generated code, including its return sequence. Consecutive terminal labels denote the same address. Such a label may be used as an address or an explicit branch target; it inserts no return, halt or instruction. `END` is an ordinary user-defined name. The ordinary-function rule against reachable fallthrough still applies: branching to its terminal label does not count as returning.
 
 **Important Notes**:
 
@@ -233,14 +237,16 @@ END:                          // Label for readability (no code follows)
 
 2. **Loop Recognition**: LASM automatically recognizes loop structures in the program (for all loop types) and will not allow cross-loops. Loops must be properly nested.
 
-3. **Optimization Hints**: Iteration bounds are hints for LASM's optimization strategies including software pipelining, modulo scheduling (LAEMS), and cross-boundary scheduling (FBBF). They are not runtime constraints.
+3. **Runtime Contract**: On each entry to the loop, the program must execute its body between `min_iteration` and `max_iteration` times, inclusive. Equal bounds guarantee that exact execution count. LASM may rely on this guarantee when optimizing loop control, software pipelining and scheduling. Violating the bounds is a program error; the compiler is not required to detect the violation or force execution to match the annotation. Other instruction and program semantics still apply.
+
+4. **Floating-Point Reductions**: Optimization may reassociate floating-point reductions, changing intermediate rounding. Numerical acceptance compares each result independently with a mathematical reference computed from the actual quantized inputs, using the program's error limits. An unoptimized execution is not a mathematical reference.
 
 **Loop Parsing Example**:
 
 LASM parses loop structures from branch patterns:
 
 ```c
-// Source code:                   // Parsed structure:
+; Source code:                   ; Parsed structure:
 i_am_loop_1:                      i_am_loop_1 {
     ...                               ...
 i_am_loop_2: 10000, 200000            i_am_loop_2 {
@@ -273,21 +279,21 @@ Pseudo-operations are directives prefixed with `@` that define program structure
 Define symbols with N-bit storage (1 ≤ N ≤ 64):
 
 ```c
-// Syntax
+; Syntax
 @bN symbol_name, symbol_value
 
-// Parameters:
-// - N: Integer in range [1, 64], specifying the number of bits for storage
-// - symbol_name: Identifier following pattern ^[a-zA-Z_][a-zA-Z0-9_]*
-// - symbol_value: Can be constants, strings, expressions, or symbolic constants
+; Parameters:
+; - N: Integer in range [1, 64], specifying the number of bits for storage
+; - symbol_name: Identifier following pattern ^[a-zA-Z_][a-zA-Z0-9_]*
+; - symbol_value: Can be constants, strings, expressions, or symbolic constants
 
-// Examples
-@b64 N, 24576           // 64-bit integer constant
-@b32 threshold, 0x100   // 32-bit value
-@b16 flags, 0b1011      // 16-bit binary value
-@b8  byte_val, 255      // 8-bit value
-@b36 addr, 0x210000000  // 36-bit address constant
-@b4  nibble, 0xF        // 4-bit value
+; Examples
+@b64 N, 24576           ; 64-bit integer constant
+@b32 threshold, 0x100   ; 32-bit value
+@b16 flags, 0b1011      ; 16-bit binary value
+@b8  byte_val, 255      ; 8-bit value
+@b36 addr, 0x210000000  ; 36-bit address constant
+@b4  nibble, 0xF        ; 4-bit value
 ```
 
 **Detailed Behavior**:
@@ -319,21 +325,21 @@ Define symbols with N-bit storage (1 ≤ N ≤ 64):
 
 **Usage in Segments**:
 ```c
-@sect ".data", array, @b8, 1, 2, 3     // Initialize byte array
-@usect ".bss", buffer, @b32, 128       // Reserve 128 32-bit elements
+@sect ".data", array, @b8, 1, 2, 3     ; Initialize byte array
+@usect ".bss", buffer, @b32, 128       ; Reserve 128 32-bit elements
 ```
 
 **Advanced Examples - Combining Constants**:
 ```c
-// String and character processing
-@sect ".data", x, @b8, "ab", 'c'    // 'ab', 'c' -> 0x6162, 0x63 -> 0x62, 0x63
-@sect ".data", x, @b4, "ab", 'c'    // 'ab', 'c' -> 0x6162, 0x63 -> 0x2, 0x3
-@b1 x, "ab"                         // 'ab' -> 0x00
-@b1 x, 'c'                          // 'c' -> 0x01
-@sect ".data", x, @b16, 'a'<< 4+'b', 'c'<<4+'d'  // 0x6162, 0x6364
+; String and character processing
+@sect ".data", x, @b8, "ab", 'c'    ; 'ab', 'c' -> 0x6162, 0x63 -> 0x62, 0x63
+@sect ".data", x, @b4, "ab", 'c'    ; 'ab', 'c' -> 0x6162, 0x63 -> 0x2, 0x3
+@b1 x, "ab"                         ; 'ab' -> 0x00
+@b1 x, 'c'                          ; 'c' -> 0x01
+@sect ".data", x, @b16, 'a'<< 4+'b', 'c'<<4+'d'  ; 0x6162, 0x6364
 
-// Expression evaluation
-@sect ".data", x, @b9, 0x2, -0b10, 6*(3+2)  // 0x0002, 0x01fe, 0x001e; x.gra=2Byte
+; Expression evaluation
+@sect ".data", x, @b9, 0x2, -0b10, 6*(3+2)  ; 0x0002, 0x01fe, 0x001e; x.gra=2Byte
 ```
 
 #### @bh, @bf, @bd - Floating-Point Storage
@@ -341,25 +347,25 @@ Define symbols with N-bit storage (1 ≤ N ≤ 64):
 IEEE754 floating-point constants with specific precisions:
 
 ```c
-// @bh - Half precision (16-bit: 1 sign, 5 exponent, 10 mantissa)
-// Syntax: @bh symbol_name, symbol_value
-@bh half_val, 1.5       // 0x3E00
-@bh a, 1.2              // 0x3CCD
+; @bh - Half precision (16-bit: 1 sign, 5 exponent, 10 mantissa)
+; Syntax: @bh symbol_name, symbol_value
+@bh half_val, 1.5       ; 0x3E00
+@bh a, 1.2              ; 0x3CCD
 @sect ".data", x, @bh, 1.5, -2.0
 
-// @bf - Single precision (32-bit: 1 sign, 8 exponent, 23 mantissa)
-// Syntax: @bf symbol_name, symbol_value
-@bf float_val, 3.14159  // 0x40490FDA
-@bf f132, -1.0          // 0xBF800000
-@bf f1, 1.0             // 0x3F800000
+; @bf - Single precision (32-bit: 1 sign, 8 exponent, 23 mantissa)
+; Syntax: @bf symbol_name, symbol_value
+@bf float_val, 3.14159  ; 0x40490FDA
+@bf f132, -1.0          ; 0xBF800000
+@bf f1, 1.0             ; 0x3F800000
 @sect ".data", arr, @bf, 1.0, 2.0, 3.0
 
-// @bd - Double precision (64-bit: 1 sign, 11 exponent, 52 mantissa)
-// Syntax: @bd symbol_name, symbol_value
-@bd double_val, 2.718281828    // 0x4005BF0A8B145769
-@bd x, 1.2                     // 0x3FF3333333333333
-@bd y, -1e-2                   // 0xBF847AE147AE147B
-@bd d164, 1.0                  // 0x3FF0000000000000
+; @bd - Double precision (64-bit: 1 sign, 11 exponent, 52 mantissa)
+; Syntax: @bd symbol_name, symbol_value
+@bd double_val, 2.718281828    ; 0x4005BF0A8B145769
+@bd x, 1.2                     ; 0x3FF3333333333333
+@bd y, -1e-2                   ; 0xBF847AE147AE147B
+@bd d164, 1.0                  ; 0x3FF0000000000000
 ```
 
 **Parameters**:
@@ -371,13 +377,13 @@ IEEE754 floating-point constants with specific precisions:
 When referencing floating-point symbolic constants, LASM uses the **original value** to minimize precision loss:
 
 ```c
-@bf x, 1.2              // x = 1.2 (stored as 32-bit float 0x3F99999A)
-@bd y, x                // Equivalent to @bd y, 1.2 (uses original 1.2)
-                        // NOT @bd y, 0x3F99999A (machine representation)
+@bf x, 1.2              ; x = 1.2 (stored as 32-bit float 0x3F99999A)
+@bd y, x                ; Equivalent to @bd y, 1.2 (uses original 1.2)
+                        ; NOT @bd y, 0x3F99999A (machine representation)
 
-@bh a, 1.2              // a = 0x3CCD (16-bit)
-@b7 z, a                // Equivalent to @b7 z, 1.2
-                        // NOT @b7 z, 0x3CCD
+@bh a, 1.2              ; a = 0x3CCD (16-bit)
+@b7 z, a                ; Equivalent to @b7 z, 1.2
+                        ; NOT @b7 z, 0x3CCD
 ```
 
 This ensures that successive type conversions don't accumulate rounding errors.
@@ -388,28 +394,28 @@ Multiple floating-point values can be packed into wider storage:
 
 ```c
 @bf f132, -1.0
-@b64 f132_f132, (f132<<32) + f132    // Pack two -1.0f into 64-bit
-// Result: 0xBF800000BF800000
+@b64 f132_f132, (f132<<32) + f132    ; Pack two -1.0f into 64-bit
+; Result: 0xBF800000BF800000
 
 @bf f1, 1.0
-@b64 f1_f1, (f1<<32) + f1            // Pack two 1.0f into 64-bit
-// Result: 0x3F8000003F800000
+@b64 f1_f1, (f1<<32) + f1            ; Pack two 1.0f into 64-bit
+; Result: 0x3F8000003F800000
 ```
 
 **Direct Usage**:
 
 ```c
-mov 0xBF800000BF800000, alpha    // Two -1.0f values packed
-mov 0x3F8000003F800000, beta     // Two 1.0f values packed
+mov 0xBF800000BF800000, alpha    ; Two -1.0f values packed
+mov 0x3F8000003F800000, beta     ; Two 1.0f values packed
 ```
 
 **String and Expression Examples**:
 
 ```c
-// Floating-point types with strings/characters
-@sect ".data", x, @bd, "ab", 'c'  // 0x4058400000000000, 0x4058800000000000
-@bf x, 3+0x4*(1.2-0.384)-'a'      // -> @bf x, -2.736  -> x=0xC02F1AA0
-@sect ".data", x, @bd, 6*(3+2), 6*(3+2.0)  // 0x403E000000000000, 0x403E000000000000
+; Floating-point types with strings/characters
+@sect ".data", x, @bd, "ab", 'c'  ; 0x4058400000000000, 0x4058800000000000
+@bf x, 3+0x4*(1.2-0.384)-'a'      ; -> @bf x, -2.736  -> x=0xC02F1AA0
+@sect ".data", x, @bd, 6*(3+2), 6*(3+2.0)  ; 0x403E000000000000, 0x403E000000000000
 ```
 
 ### Segment Management
@@ -419,24 +425,24 @@ mov 0x3F8000003F800000, beta     // Two 1.0f values packed
 Define or continue an initialized segment with optional data:
 
 ```c
-// Syntax
+; Syntax
 @sect "section_name"
 @sect "section_name", symbol_name, T, val1[, val2, ...]
 
-// Parameters:
-// - section_name: String literal for segment name
-// - symbol_name: Identifier for first address of the data
-// - T: Storage type (@bN, @bh, @bf, @bd)
-// - val1, val2, ...: Can be constants, strings, expressions, or symbolic constants
+; Parameters:
+; - section_name: String literal for segment name
+; - symbol_name: Identifier for first address of the data
+; - T: Storage type (@bN, @bh, @bf, @bd)
+; - val1, val2, ...: Can be constants, strings, expressions, or symbolic constants
 
-// Examples
-@sect ".text"                                // Start code segment
-@sect ".text.1"                              // Code segment with suffix
-@sect "custom"                               // Custom segment name
-@sect ".data"                                // Start data segment
-@sect ".data", arr, @b32, 1, 3, 5, -3, 4    // Initialize array with 5 elements
-@sect ".rodata", x, @b8, 0x2, -2, 255, 'A'  // Byte array: 0x02, 0xfe, 0xff, 0x61
-@sect ".data", a2, @bf, 1.2, 1.4, -1.5, 1e-2 // Float array with 4 elements
+; Examples
+@sect ".text"                                ; Start code segment
+@sect ".text.1"                              ; Code segment with suffix
+@sect "custom"                               ; Custom segment name
+@sect ".data"                                ; Start data segment
+@sect ".data", arr, @b32, 1, 3, 5, -3, 4    ; Initialize array with 5 elements
+@sect ".rodata", x, @b8, 0x2, -2, 255, 'A'  ; Byte array: 0x02, 0xfe, 0xff, 0x61
+@sect ".data", a2, @bf, 1.2, 1.4, -1.5, 1e-2 ; Float array with 4 elements
 ```
 
 **Segment Switching Behavior**:
@@ -444,10 +450,10 @@ Define or continue an initialized segment with optional data:
 After `@sect` completes, a **new segment starts** if the segment name is different from the current one. The specified segment remains active for subsequent code/data until another segment directive.
 
 ```c
-@sect ".data", x, @b64, 13, 14    // Enter .data segment
-// Still in .data segment
-@sect ".text"                      // End .data, start .text
-@func foo {                        // foo is placed in .text
+@sect ".data", x, @b64, 13, 14    ; Enter .data segment
+; Still in .data segment
+@sect ".text"                      ; End .data, start .text
+@func foo {                        ; foo is placed in .text
     @ret
 }
 ```
@@ -467,30 +473,30 @@ Segments can have suffixes for organizational purposes. For example, `.text`, `.
 Reserve space in an uninitialized segment (typically BSS):
 
 ```c
-// Syntax
+; Syntax
 @usect "section_name", symbol_name, T, count
 
-// Parameters:
-// - section_name: String literal for segment name (usually ".bss")
-// - symbol_name: Identifier pointing to the first byte of reserved space
-// - T: Storage type (@bN, @bh, @bf, @bd) specifying element size
-// - count: Number of data elements to reserve
-// - Reserved space size (bytes) = sizeof(T) * count
-// - Starting position can be set via @align (default: 1-byte alignment, 0-byte offset)
+; Parameters:
+; - section_name: String literal for segment name (usually ".bss")
+; - symbol_name: Identifier pointing to the first byte of reserved space
+; - T: Storage type (@bN, @bh, @bf, @bd) specifying element size
+; - count: Number of data elements to reserve
+; - Reserved space size (bytes) = sizeof(T) * count
+; - Starting position can be set via @align (default: 1-byte alignment, 0-byte offset)
 
-// Examples
-@usect ".bss", buffer, @b32, 128         // Reserve 128 32-bit elements (512 bytes)
-@usect ".bss", workspace, @b64, 256      // Reserve 256 64-bit elements (2048 bytes)
+; Examples
+@usect ".bss", buffer, @b32, 128         ; Reserve 128 32-bit elements (512 bytes)
+@usect ".bss", workspace, @b64, 256      ; Reserve 256 64-bit elements (2048 bytes)
 
 @align 8
-@usect ".data", x, @bd, 10               // 10 double-precision elements, 8-byte aligned
+@usect ".data", x, @bd, 10               ; 10 double-precision elements, 8-byte aligned
 
 @align 8, 1
-@usect ".bss", y, @b32, 128              // 8-byte aligned with 1-byte offset
+@usect ".bss", y, @b32, 128              ; 8-byte aligned with 1-byte offset
 
-@usect ".bss", Arr, @b10, 128            // 128 elements, 2 bytes each (10 bits → 2 bytes)
-// Arr.cnt = 128 (element count)
-// Arr.gra = 2 (bytes per element)
+@usect ".bss", Arr, @b10, 128            ; 128 elements, 2 bytes each (10 bits → 2 bytes)
+; Arr.cnt = 128 (element count)
+; Arr.gra = 2 (bytes per element)
 ```
 
 **Critical Segment Switching Behavior**:
@@ -501,11 +507,11 @@ Reserve space in an uninitialized segment (typically BSS):
 - After `@sect` completes, a **new segment starts** (if the name differs)
 
 ```c
-@sect ".data", x, @b64, 13, 14         // In .data segment
-@usect ".bss", sym, @bh, 32            // Temporarily switch to .bss, then revert to .data
-// Automatically returned to .data segment here
-@sect ".text"                           // Explicitly end .data, start .text
-@func __start {                         // __start is placed in .text
+@sect ".data", x, @b64, 13, 14         ; In .data segment
+@usect ".bss", sym, @bh, 32            ; Temporarily switch to .bss, then revert to .data
+; Automatically returned to .data segment here
+@sect ".text"                           ; Explicitly end .data, start .text
+@func __start {                         ; __start is placed in .text
     @ret
 }
 ```
@@ -515,10 +521,10 @@ Reserve space in an uninitialized segment (typically BSS):
 Use `@align` before `@usect` to control memory layout:
 
 ```c
-@align 16                              // Request 16-byte alignment
+@align 16                              ; Request 16-byte alignment
 @usect ".bss", aligned_buffer, @b64, 64
 
-@align 4, 2                            // 4-byte alignment with 2-byte offset
+@align 4, 2                            ; 4-byte alignment with 2-byte offset
 @usect ".bss", offset_buffer, @b32, 32
 ```
 
@@ -528,11 +534,11 @@ Reserved space symbols have `.cnt` and `.gra` properties:
 
 ```c
 @usect ".bss", buffer, @b32, 256
-// buffer.cnt = 256 (element count)
-// buffer.gra = 4 (bytes per element: 32 bits = 4 bytes)
+; buffer.cnt = 256 (element count)
+; buffer.gra = 4 (bytes per element: 32 bits = 4 bytes)
 
 @b16 x, buffer.gra, buffer.cnt
-// x values: 0x0004, 0x0100
+; x values: 0x0004, 0x0100
 ```
 
 ### Function Definitions
@@ -542,20 +548,20 @@ Reserved space symbols have `.cnt` and `.gra` properties:
 Define a regular function:
 
 ```c
-// Syntax
+; Syntax
 @func function_name [arg1[, arg2, ...]] {
-    // Function body
+    ; Function body
     @ret [return_values...]
 }
 
-// Function name pattern: ^[a-zA-Z_][a-zA-Z0-9_]*
-// Arguments and return values can be any number (including zero)
+; Function name pattern: ^[a-zA-Z_][a-zA-Z0-9_]*
+; Arguments and return values can be any number (including zero)
 
-// Examples
+; Examples
 @func _sample_code addrA, addrB, addrC, M, N, K {
     mov addrA, aA
     mov addrB, aB
-    // ... function body ...
+    ; ... function body ...
     @ret
 }
 
@@ -565,12 +571,12 @@ Define a regular function:
 }
 
 @func sgemv_0_kernel addrA, addrX, addrY, M, N {
-    // Matrix-vector multiplication implementation
+    ; Matrix-vector multiplication implementation
     @ret
 }
 
 @func sgemm_kernel addrA, addrB, addrC, M, K, N {
-    // Matrix-matrix multiplication implementation
+    ; Matrix-matrix multiplication implementation
     @ret
 }
 ```
@@ -591,33 +597,35 @@ Define a regular function:
 4. **Case Sensitivity**: Function names are case-sensitive
    - `MyFunc` and `myfunc` are different functions
 
+5. **Declaration Order**: A call target must already be introduced by a function definition header or an earlier `@import`. A function can call itself within its body. Mutual recursion can use preceding imports; forward calls to later definitions in the same file are not supported.
+
 **Parameter Passing**:
 
-Parameters are passed by convention. The calling convention (register usage, stack layout) depends on the target architecture. LASM handles the details based on the machine description.
+Parameters are passed individually according to the target calling convention. Each formal parameter, argument and returned value denotes one register value (or a constant/expression producing one), never an aggregate register pair. Split a pair explicitly into two parameters or results, such as `hi, lo`; `hi:lo` cannot occupy one call slot. Local `@asg` pair aliases remain valid inside a function.
 
 **Return Values**:
 
-Functions can return zero or more values using `@ret`. The calling convention determines how return values are passed back to the caller.
+Ordinary functions can return zero or more individual values using `@ret`. Every `@ret` in one function must return the same number of values. The calling convention determines their register positions.
 
 #### @main - Entry Function
 
 Define the program entry point:
 
 ```c
-// Syntax
+; Syntax
 @main function_name {
-    // Entry point code
-    @ret
+    ; Entry point code
+    ; Finish with the target platform's stop or idle protocol.
 }
 
-// Function name pattern: ^[a-zA-Z_][a-zA-Z0-9_]*
-// NO parameters allowed
+; Function name pattern: ^[a-zA-Z_][a-zA-Z0-9_]*
+; NO parameters allowed
 
-// Examples
+; Examples
 @main __start {
     mov 42, r0
     @call add, 10, 20, = result
-    @ret
+    ; Finish with the target platform's stop or idle protocol.
 }
 
 @main testing_axpby {
@@ -626,7 +634,6 @@ Define the program entry point:
     @icall config_cvccr, 3
     @icall _axpby_kernel, addrX, addrY, N, alpha, beta, = r1, r2
     @icall test_stop
-    @ret
 }
 ```
 
@@ -645,7 +652,7 @@ Define the program entry point:
      - Functions not called (directly or indirectly) from `@main` are ignored
      - This enables dead code elimination
 
-   - **If `@main` does NOT exist**: LASM optimizes **ALL** regular functions and exports them in topological call order
+   - **If `@main` does NOT exist**: LASM optimizes **ALL** regular functions and exports caller components before callee components. A recursive component retains source order within it; acyclic programs retain their existing topological order.
      - All functions are considered library functions
      - Suitable for building reusable function libraries
 
@@ -657,26 +664,39 @@ Define the program entry point:
 
 **Return Values**:
 
-`@main` typically uses `@ret` without arguments. If return values are provided, they are handled by the runtime environment (e.g., exit code).
+`@main` must not contain `@ret`, with or without values. Program termination uses the target platform's own stop or idle protocol, such as the benchmark library's `test_stop`. The closing brace emits neither a return nor an implicit stop; `@main` has no return-value contract.
+
+#### Stack Storage and Capacity
+
+Recursive calls preserve each activation's live values and return state. Call saves use `.sstk`/`.vstk`; register spills use `.sreg`/`.vreg`, with their pointers explicitly configured as `VALPASS.SREG`/`VALPASS.VREG`. All four regions and their singleton register lists in `VALPASS` are required.
+
+The program is responsible for providing enough storage for its maximum live call depth, including recursive activations and register spills. LASM emits no runtime capacity checks or overflow handler. Exceeding a configured region is outside the program's storage contract; LASM does not guarantee a diagnostic, trap, or recovery. Applications that need runtime protection must provide it themselves.
+
+LASM checks storage layout, alignment, pointer-register validity, individual frame capacity, and finite call-chain demand at compile time. For recursive components, this finite calculation includes the largest member frame and downstream demand; it does not bound repeated recursive activations. LASM neither assumes a maximum recursion depth nor expands the configured regions. Frame sizes include alignment padding. Statically computed pointer origins and frame tops must fit their registers.
+
+Configuring `VALPASS.SSTK`, `VSTK`, `SREG`, or `VREG` does not permanently reserve that register. When the corresponding storage is unused, the register remains eligible for ordinary automatic allocation under the machine's operand constraints and `@dreg`. An active storage pointer must remain protected while its value is needed, including in callees that inherit it but allocate no storage of their own.
+
+An ordinary function that needs call-save or spill storage must have compiler-proven control exits. Use `@ret` for a returning path; a raw register or external-address jump cannot establish pointer restoration, even if it names the configured return register. Unknown transfers remain allowed in a function with no frame, but foreign code must honor the active storage-pointer ABI. `@main` has no caller and is exempt from the restoration requirement. These conditions are checked again when spilling introduces new storage.
+
 
 #### @ret - Function Return
 
-Return from a function:
+Return from an ordinary `@func` function; this operation is forbidden in `@main`:
 
 ```c
-// Syntax
+; Syntax
 @ret [val1[, val2, ...]]
 
-// Return value types: constants, symbolic constants, physical registers, variables
+; Return value types: constants, symbolic constants, physical registers, variables
 
-// Examples
-@ret                        // No return value
-@ret 42                     // Return constant
-@ret result                 // Return variable
-@ret r0, r1                 // Return multiple values (physical registers)
-@ret r10                    // Return from get_core_id
-@ret ID, CoreNum            // Return multiple named values
-@ret sum, product, count    // Return three values
+; Examples
+@ret                        ; No return value
+@ret 42                     ; Return constant
+@ret result                 ; Return variable
+@ret R0, R1                 ; Return multiple values (physical registers)
+@ret r10                    ; Return from get_core_id
+@ret ID, CoreNum            ; Return multiple named values
+@ret sum, product, count    ; Return three values
 ```
 
 **Three Usage Cases**:
@@ -687,7 +707,7 @@ Return from a function:
    ```c
    @func initialize {
        mov 0, counter
-       @ret                 // No return value
+       @ret                 ; No return value
    }
    ```
 
@@ -698,23 +718,24 @@ Return from a function:
    @func compute a, b {
        add a, b, sum
        mul a, b, product
-       @ret sum, product   // Return two values
+       @ret sum, product   ; Return two values
    }
    ```
 
 3. **@ret not provided**:
-   - If function body has no `@ret`, LASM reports an error
-   - Called function MUST have at least one `@ret` statement (unless it never returns)
+   - An ordinary function must not have a reachable path that falls off its end, whether or not other paths contain `@ret`.
+   - A path that does not return, such as an unconditional infinite loop, needs no unreachable `@ret`.
+   - A closing brace does not implicitly return zero or the last assigned value.
    ```c
    @func broken {
        mov 0, x
-       // ERROR: Missing @ret
+       ; ERROR: Missing @ret
    }
    ```
 
 **Multiple Return Statements**:
 
-Functions can have multiple `@ret` statements for different code paths:
+Functions can have multiple `@ret` statements for different code paths. All sites must return the same number of individual values; the values themselves may differ. A mismatch is a compilation error. Each `@ret` immediately ends its path, so instructions on another path cannot overwrite its result:
 
 ```c
 @func conditional_return flag {
@@ -735,7 +756,7 @@ TRUE_PATH:
 Return values can be:
 - **Constants**: `@ret 0`, `@ret 42`
 - **Symbolic constants**: `@ret SIZE`, `@ret MAX_COUNT`
-- **Physical registers**: `@ret r0, r1, ar0`
+- **Physical registers**: `@ret R0, R1, AR0`
 - **Variables**: `@ret sum, product, counter`
 
 The calling convention determines how these are passed back to the caller.
@@ -747,25 +768,26 @@ The calling convention determines how these are passed back to the caller.
 Call a function (potentially generating actual call instruction):
 
 ```c
-// Syntax
+; Syntax
 @call function_name[, arg1, arg2, ...][, = ret1, ret2, ...]
 
-// Parameters:
-// - function_name: Function defined by @func or imported via @import
-// - arg1, arg2, ...: Argument values (constants, variables, registers)
-// - ret1, ret2, ...: Variables to receive return values (after =)
+; Parameters:
+; - function_name: Function defined by @func or imported via @import
+; - arg1, arg2, ...: Argument values (constants, variables, registers)
+; - ret1, ret2, ...: Variables to receive return values (after =)
 
-// Examples
-@call initialize                              // No arguments, no returns
-@call compute, x, y                           // Two arguments, no returns
-@call divide, a, b, = quotient, remainder     // Two args, two returns
-@call add, 10, 20, = result                   // Constant args, one return
-@call print_value, value                      // Single argument
+; Examples
+@call initialize                              ; No arguments, no returns
+@call compute, x, y                           ; Two arguments, no returns
+@call divide, a, b, = quotient, remainder     ; Two args, two returns
+@call add, 10, 20, = result                   ; Constant args, one return
+@call print_value, value                      ; Single argument
 ```
 
 **Behavior**:
 
 1. **Call Mechanism**:
+   - Direct and mutual recursion follow the storage and capacity rules under [Stack Storage and Capacity](#stack-storage-and-capacity)
    - Generates actual function call instructions
    - May involve saving return address, jumping to function, and restoring context
    - Calling convention handled by LASM based on architecture
@@ -790,24 +812,24 @@ Call a function (potentially generating actual call instruction):
 Call with inlining hint (may trigger function inlining):
 
 ```c
-// Syntax
+; Syntax
 @icall function_name[, arg1, arg2, ...][, = ret1, ret2, ...]
 
-// Parameters:
-// - function_name: Function defined by @func or imported via @import
-// - arg1, arg2, ...: Argument values (constants, variables, registers)
-// - ret1, ret2, ...: Variables to receive return values (after =)
+; Parameters:
+; - function_name: Function defined by @func or imported via @import
+; - arg1, arg2, ...: Argument values (constants, variables, registers)
+; - ret1, ret2, ...: Variables to receive return values (after =)
 
-// Examples
-@icall fast_helper, input, = output           // Potential inline expansion
-@icall config_cvccr, 3                        // Configuration call
-@icall config_scr, 3                          // Another config call
+; Examples
+@icall fast_helper, input, = output           ; Potential inline expansion
+@icall config_cvccr, 3                        ; Configuration call
+@icall config_scr, 3                          ; Another config call
 @icall _axpby_kernel, addrX, addrY, N, alpha, beta, = r1, r2
-@icall test_output, addrY, N*8                // Expression as argument
-@icall test_stop                              // No arguments
-@icall get_core_state, = ID, CoreNum          // Multiple return values
-@icall clk_open, r11                          // Physical register argument
-@icall leaf_function                          // Simple call candidate
+@icall test_output, addrY, N*8                ; Expression as argument
+@icall test_stop                              ; No arguments
+@icall get_core_state, = ID, CoreNum          ; Multiple return values
+@icall clk_open, R11                          ; Physical register argument
+@icall leaf_function                          ; Simple call candidate
 ```
 
 **Inlining Decision**:
@@ -831,7 +853,7 @@ Call with inlining hint (may trigger function inlining):
 
 **Conditions for Inlining**:
 
-- Function must be **inlineable** (no recursive calls, finite size)
+- Function must be **inlineable** (no recursive calls, finite size, no reachable unresolved machine control transfer). A register or external-address jump does not establish that its return-address context survives inline expansion; such calls retain a regular call sequence.
 - Register pressure must be **acceptable** (no excessive spilling)
 - Inlining must provide **performance benefit** or reduce code size
 
@@ -851,8 +873,8 @@ Use `@bar` to prevent unwanted inlining across optimization boundaries:
 
 ```c
 @icall setup_function
-@bar                          // Optimization barrier
-@icall critical_function      // Prevent inlining across barrier
+@bar                          ; Optimization barrier
+@icall critical_function      ; Prevent inlining across barrier
 @bar
 ```
 
@@ -863,14 +885,14 @@ Use `@bar` to prevent unwanted inlining across optimization boundaries:
 Import functions from another LAN file for cross-file references:
 
 ```c
-// Syntax
+; Syntax
 @import "filename", func1[, func2, ...]
 
-// Parameters:
-// - filename: Relative file path (string literal)
-// - func1, func2, ...: Function names to import (must exist in target file)
+; Parameters:
+; - filename: Relative file path (string literal)
+; - func1, func2, ...: Function names to import (must exist in target file)
 
-// Examples
+; Examples
 @import "../lib/utils.lan", helper_func
 @import "./math.lan", add, multiply, divide
 @import "../lib/csl.lan", test_output, test_stop, config_cvccr, config_scr
@@ -908,7 +930,7 @@ Import functions from another LAN file for cross-file references:
 **Multi-File Example**:
 
 ```c
-// File: math.lan
+; File: math.lan
 @func add a, b {
     add a, b, sum
     @ret sum
@@ -919,13 +941,13 @@ Import functions from another LAN file for cross-file references:
     @ret product
 }
 
-// File: main.lan
-@import "math.lan", add, multiply      // Import two functions
+; File: main.lan
+@import "math.lan", add, multiply      ; Import two functions
 
 @main start {
     @call add, 10, 20, = x
     @call multiply, x, 3, = y
-    @ret
+    ; Finish with the target platform's stop or idle protocol.
 }
 ```
 
@@ -943,26 +965,26 @@ Import functions from another LAN file for cross-file references:
 Explicitly bind a variable (substitution symbol) to a physical register:
 
 ```c
-// Syntax
+; Syntax
 @asg symbol, register
 
-// Parameters:
-// - symbol: Variable name (identifier)
-// - register: Physical register name or register pair
+; Parameters:
+; - symbol: Variable name (identifier)
+; - register: Physical register name or register pair
 
-// Examples - Single registers
-@asg variable, r5                 // Assign variable to scalar register r5
-@asg counter, r10
-@asg data_ptr, ar0                // Assign to address register ar0
-@asg a_ptr, ar1
-@asg b_ptr, ar2
-@asg result_ptr, ar3
-@asg vector_temp, vr10            // Assign to vector register vr10
-@asg offset_val, or5              // Assign to offset register or5
+; Examples - Single registers
+@asg variable, R5                 ; Assign variable to scalar register R5
+@asg counter, R10
+@asg data_ptr, AR0                ; Assign to address register AR0
+@asg a_ptr, AR1
+@asg b_ptr, AR2
+@asg result_ptr, AR3
+@asg vector_temp, VR10            ; Assign to vector register VR10
+@asg offset_val, OR5              ; Assign to offset register OR5
 
-// Examples - Register pairs
-@asg pair_val, vr3:vr2            // Assign to vector register pair
-@asg wide_data, r21:r20           // Assign to scalar register pair
+; Examples - Register pairs
+@asg pair_val, VR3:VR2            ; Assign to vector register pair
+@asg wide_data, R21:R20           ; Assign to scalar register pair
 ```
 
 **Effect and Behavior**:
@@ -983,7 +1005,7 @@ Explicitly bind a variable (substitution symbol) to a physical register:
    - Can appear anywhere before the variable's first use
 
 4. **Register Availability**:
-   - Assigned register must be **available** (not disabled by @dreg)
+   - `@dreg` restricts **automatic allocation only**; `@asg` may explicitly bind a register listed by `@dreg`
    - If register is already in use, LASM may report a conflict
    - User is responsible for avoiding register conflicts
 
@@ -991,20 +1013,20 @@ Explicitly bind a variable (substitution symbol) to a physical register:
 
 ```c
 @func compute_kernel addr_in, addr_out, N {
-    // Explicit register assignments at function start
-    @asg addr_in, ar0
-    @asg addr_out, ar1
-    @asg N, r10
+    ; Explicit register assignments at function start
+    @asg addr_in, AR0
+    @asg addr_out, AR1
+    @asg N, R10
 
-    mov 0, sum                    // 'sum' will be allocated by framework
+    mov 0, sum                    ; 'sum' will be allocated by framework
 
 loop: 1, 1000
-    load *ar0++[1], val           // ar0 is the assigned register for addr_in
+    load *AR0++[1], val           ; AR0 is the assigned register for addr_in
     add sum, val, sum
-    sub 1, r10, r10               // r10 is the assigned register for N
-    [r10] br loop
+    sub 1, R10, R10               ; R10 is the assigned register for N
+    [R10] br loop
 
-    stor sum, *ar1                // ar1 is the assigned register for addr_out
+    stor sum, *AR1                ; AR1 is the assigned register for addr_out
     @ret
 }
 ```
@@ -1019,9 +1041,9 @@ loop: 1, 1000
 **Register Pair Assignment**:
 
 ```c
-@asg wide_value, r31:r30          // Pair must follow architecture rules
-load_pair *ar0, r31:r30           // Use the pair
-// Both r31 and r30 are now occupied
+@asg wide_value, R31:R30          ; Pair must follow architecture rules
+load_pair *AR0, R31:R30           ; Use the pair
+; Both R31 and R30 are now occupied
 ```
 
 #### @align - Memory Alignment
@@ -1029,18 +1051,18 @@ load_pair *ar0, r31:r30           // Use the pair
 Specify memory alignment for the next address indicator:
 
 ```c
-// Syntax
+; Syntax
 @align alignment [, offset]
 
-// Parameters:
-// - alignment: Minimum alignment in bytes (default: 4)
-// - offset: Storage offset in bytes (default: 0)
+; Parameters:
+; - alignment: Minimum alignment in bytes (default: 4)
+; - offset: Storage offset in bytes (default: 0)
 
-// Examples
-@align 8                               // 8-byte alignment, 0 offset
-@align 16                              // 16-byte alignment, 0 offset
-@align 4, 2                            // 4-byte alignment with 2-byte offset
-@align 32                              // 32-byte alignment (cache line)
+; Examples
+@align 8                               ; 8-byte alignment, 0 offset
+@align 16                              ; 16-byte alignment, 0 offset
+@align 4, 2                            ; 4-byte alignment with 2-byte offset
+@align 32                              ; 32-byte alignment (cache line)
 ```
 
 **Critical Behavior**:
@@ -1055,46 +1077,68 @@ Specify memory alignment for the next address indicator:
 **Alignment Examples**:
 
 ```c
-// Example 1: Single alignment
+; Example 1: Single alignment
 @align 8
-@usect ".bss", x, @b64, 10     // x is 8-byte aligned
-@usect ".bss", y, @b32, 20     // y uses DEFAULT alignment (NOT 8-byte)
+@usect ".bss", x, @b64, 10     ; x is 8-byte aligned
+@usect ".bss", y, @b32, 20     ; y uses DEFAULT alignment (NOT 8-byte)
 
-// Example 2: Alignment with offset
+; Example 2: Alignment with offset
 @align 8, 2
-@usect ".bss", x, @bh, 32      // x is at 8n+2 address (8-byte aligned + 2 offset)
+@usect ".bss", x, @bh, 32      ; x is at 8n+2 address (8-byte aligned + 2 offset)
 
-// Example 3: Multiple alignments
+; Example 3: Multiple alignments
 @align 4
-@sect ".data", x, @b32, 1, 2, 3  // x will be 4-byte aligned
-@usect ".bss", y, @bh, 32        // y will use DEFAULT alignment (not 4-byte)
+@sect ".data", x, @b32, 1, 2, 3  ; x will be 4-byte aligned
+@usect ".bss", y, @bh, 32        ; y will use DEFAULT alignment (not 4-byte)
 
-// Example 4: Function alignment
+; Example 4: Function alignment
 @align 16
-@func foo {                      // Function foo will be 16-byte aligned
+@func foo {                      ; Function foo will be 16-byte aligned
     @ret
 }
-@func bar {                      // Function bar uses default alignment
+@func bar {                      ; Function bar uses default alignment
     @ret
 }
 
-// Example 5: Section alignment
+; Example 5: Section alignment
 @align 8
-@sect ".data", buffer, @b64, 100  // buffer is 8-byte aligned
+@sect ".data", buffer, @b64, 100  ; buffer is 8-byte aligned
 
 @align 16
-@usect ".bss", large_array, @b64, 1024  // large_array is 16-byte aligned
+@usect ".bss", large_array, @b64, 1024  ; large_array is 16-byte aligned
 ```
+
+**Inner-Function Labels**:
+
+Inside a function body, `@align` applies to the next label of that function:
+
+```c
+@func copy n {
+    ...
+    @align 32                      ; loop head at a 32-byte boundary
+COPY_LOOP: 1, 64
+    ...
+[n] br COPY_LOOP
+    @ret
+}
+```
+
+- The alignment requirement is kept even when no instruction refers to the label; an unreferenced label name may be removed.
+- An `@align` that reaches the function's closing brace without a following label is an error.
+- Adjacent alignment boundaries share an address when their requirements allow it. Otherwise wait (NOP) instructions separate reachable boundaries; a gap proved never to execute may hold raw bytes. Each boundary retains its own aligned address.
+- A loop that LASM software-pipelines needs no aligned label: its code is restructured into prologue, kernel and epilogue, and the label's alignment is not applied.
+- Control enters code only at function entries and labels. When the code before an aligned label cannot fall through to it (it ends with an unconditional jump), the gap holds bytes that are never executed. Otherwise LASM inserts wait (NOP) instructions, preferring idle cycles the schedule already has and choosing the function's placement to need as few as possible; any added cycles count as execution time.
 
 **Alignment Calculation**:
 
 - **Without offset**: Address = N × alignment (where N is a non-negative integer)
 - **With offset**: Address = N × alignment + offset
+- An address that already satisfies the alignment is kept; otherwise LASM uses the lowest such address that is not below the next free byte, except that a function's placement and a gap that is never executed may take a later address of this form when that avoids executed wait instructions.
 
 ```c
-@align 8        // Addresses: 0, 8, 16, 24, 32, ...
-@align 8, 4     // Addresses: 4, 12, 20, 28, 36, ...
-@align 16, 2    // Addresses: 2, 18, 34, 50, 66, ...
+@align 8        ; Addresses: 0, 8, 16, 24, 32, ...
+@align 8, 4     ; Addresses: 4, 12, 20, 28, 36, ...
+@align 16, 2    ; Addresses: 2, 18, 34, 50, 66, ...
 ```
 
 **Common Use Cases**:
@@ -1116,18 +1160,18 @@ Specify memory alignment for the next address indicator:
 Mark physical registers as unavailable for automatic register allocation:
 
 ```c
-// Syntax
+; Syntax
 @dreg reg1[, reg2, ...]
 
-// Parameters:
-// - reg1, reg2, ...: Physical register names to disable
+; Parameters:
+; - reg1, reg2, ...: Physical register names to disable
 
-// Examples
-@dreg r10, r11, r12                   // Disable scalar registers
-@dreg ar5, ar6                        // Disable address registers
-@dreg vr20, vr21, vr22                // Disable vector registers
-@dreg ar8, r11, vr1, vr0              // Disable mixed register types
-@dreg or3, or4                        // Disable offset registers
+; Examples
+@dreg R10, R11, R12                   ; Disable scalar registers
+@dreg AR5, AR6                        ; Disable address registers
+@dreg VR20, VR21, VR22                ; Disable vector registers
+@dreg AR8, R11, VR1, VR0              ; Disable mixed register types
+@dreg OR3, OR4                        ; Disable offset registers
 ```
 
 **Purpose**:
@@ -1153,40 +1197,40 @@ It **ONLY** affects the allocator's choices for **future symbolic variables**.
 1. **Reserve Registers for Specific Purposes**:
    ```c
    @func kernel {
-       @dreg r10, r11, r12    // Reserve for special use
-       // Allocator won't use r10-r12 for symbolic variables
-       mov 0, r10             // Explicit use is allowed
-       add x, y, z            // x,y,z allocated to other registers
+       @dreg R10, R11, R12    ; Reserve for special use
+       ; Allocator won't use R10-R12 for symbolic variables
+       mov 0, R10             ; Explicit use is allowed
+       add x, y, z            ; x,y,z allocated to other registers
    }
    ```
 
 2. **Interfacing with External Code**:
    ```c
-   @dreg r0, r1, r2          // Reserved by calling convention
+   @dreg R0, R1, R2          ; Reserved by calling convention
    ```
 
 3. **Debugging Register Allocation**:
    ```c
-   @dreg vr20, vr21, vr22    // Force allocator to use different registers
+   @dreg VR20, VR21, VR22    ; Force allocator to use different registers
    ```
 
 4. **Working Around Hardware Limitations**:
    ```c
-   @dreg ar15                // ar15 has hardware bug, don't use
+   @dreg AR15                ; AR15 has hardware bug, don't use
    ```
 
 **Example**:
 
 ```c
 @func test_allocation {
-    @dreg r5, r6, r7          // Disable r5-r7 for allocation
-    @asg fixed_var, r8        // Explicitly assign r8 (always works)
+    @dreg R5, R6, R7          ; Disable R5-R7 for allocation
+    @asg fixed_var, R8        ; Explicitly assign R8 (always works)
 
-    mov 0, temp1              // temp1 allocated to available register (NOT r5-r7)
-    add temp1, 1, temp2       // temp2 allocated to available register (NOT r5-r7)
+    mov 0, temp1              ; temp1 allocated to available register (NOT R5-R7)
+    add temp1, 1, temp2       ; temp2 allocated to available register (NOT R5-R7)
 
-    mov 42, r5                // Explicit use of r5 is allowed
-    add r5, temp1, result     // Mix explicit and allocated registers
+    mov 42, R5                ; Explicit use of R5 is allowed
+    add R5, temp1, result     ; Mix explicit and allocated registers
 
     @ret
 }
@@ -1195,133 +1239,73 @@ It **ONLY** affects the allocator's choices for **future symbolic variables**.
 **Interaction with @asg**:
 
 ```c
-@dreg r10, r11
-@asg myvar, r10               // This is ALLOWED (explicit assignment)
-// Allocator won't use r10/r11 for other variables
-// But user can explicitly assign r10
+@dreg R10, R11
+@asg myvar, R10               ; This is ALLOWED (explicit assignment)
+; Allocator won't use R10/R11 for other variables
+; But user can explicitly assign R10
 ```
 
 #### @mdep - Memory Dependency
 
-Declare memory address dependencies within a segment for correct optimization:
+Declare dependencies between explicitly named memory accesses inside a function:
 
 ```c
-// Syntax
-@mdep sym1, sym2[, sym3, ...]
-
-// Parameters:
-// - sym1, sym2, ...: Memory symbols that may alias or have dependencies
-
-// Examples
-@mdep array1, array2                  // Declare dependency between two arrays
-@mdep buffer1, buffer2, buffer3       // Multiple dependencies
-@mdep input_buffer, output_buffer     // Buffers that may overlap
+@mdep access1, access2[, access3, ...]
 ```
 
-**Purpose**:
+Each name is a **memory-access label**, distinct from a pointer variable, physical
+register, address symbol or instruction label. Declare at least two distinct names.
+Attach each used name to one memory operand with `{name}`, after its address and
+optional offset. Names are local to the function and must be declared before use;
+an undeclared name or a second source operand using the same name is an error.
 
-Declare memory address dependencies within a segment to ensure correct optimization behavior.
-
-**Default LASM Assumption**:
-
-**IMPORTANT**: LASM assumes there are **NO memory dependencies** within a function by default. This enables aggressive optimizations such as:
-- Reordering of load/store operations
-- Elimination of redundant loads
-- Store-to-load forwarding
-- Memory access scheduling
-
-**When to Use @mdep**:
-
-Use `@mdep` to explicitly declare dependencies when:
-
-1. **Memory Aliasing**:
-   ```c
-   @func copy_with_overlap src, dst, size {
-       @mdep src, dst             // src and dst may overlap
-       // Prevents unsafe reordering of loads/stores
-   }
-   ```
-
-2. **Shared Memory Segments**:
-   ```c
-   @mdep shared_input, shared_output  // Concurrent access possible
-   ```
-
-3. **Pointer Aliasing**:
-   ```c
-   @func process_pointers ptr1, ptr2 {
-       @mdep ptr1, ptr2           // Pointers may point to same memory
-       load *ptr1, val1
-       stor val2, *ptr2           // Must respect dependency
-       load *ptr1, val3           // Cannot assume val1 == val3
-   }
-   ```
-
-**What Happens Without @mdep**:
-
-If you don't declare dependencies, LASM may:
-- Reorder memory operations that actually have dependencies
-- Eliminate loads that are actually needed
-- Produce incorrect code for aliased memory accesses
-
-**Example of Incorrect Optimization Without @mdep**:
+A declaration relates every pair of its named accesses. Further declarations may
+reuse names to declare additional pairs. Unused names have no memory operation to
+constrain. The declaration does not infer aliases from pointer values or make all
+other memory accesses dependent.
 
 ```c
-// Without @mdep (UNSAFE if a and b alias)
-@func unsafe_update a, b {
-    load *a, val1
-    stor 42, *b              // If b == a, this changes *a
-    load *a, val2            // LASM may optimize this away, assuming val2 == val1
-    @ret val2                // INCORRECT if a == b
-}
-
-// With @mdep (SAFE)
-@func safe_update a, b {
-    @mdep a, b               // Declare potential aliasing
-    load *a, val1
-    stor 42, *b              // If b == a, this changes *a
-    load *a, val2            // LASM must reload from *a
-    @ret val2                // CORRECT
+@func update p, q {
+    @mdep before, write, after
+    load *p{before}, old
+    stor old, *q{write}
+    load *p{after}, result
+    @ret result
 }
 ```
 
-**Scope**:
+Here `p` and `q` are address operands; `before`, `write` and `after` name the three
+memory accesses. Use the target's actual load/store mnemonics and operand forms.
+If `p` and `q` may overlap, these explicit dependencies prevent the store and loads
+from being reordered contrary to their source order. For an offset address, write
+`*+p[4]{before}`. Writing `@mdep p, q` does **not** bind the pointer variables.
 
-- Must be used in **local scope** (inside function body)
-- Typically placed near the beginning of the function
-- Affects all memory operations in the current function
+LASM assumes no additional memory dependencies by default. Declare the access
+pairs that may overlap; omitting a necessary relation can permit an incorrect
+reordering. Dependencies do not make data or pointer values initialized and do not
+change instruction latency, resource or explicit-packet constraints.
 
-**Performance Trade-off**:
-
-- **With @mdep**: Correct but potentially slower (fewer optimizations)
-- **Without @mdep**: Faster but unsafe if dependencies exist
-
-**Best Practices**:
-
-- Declare dependencies conservatively (better safe than sorry)
-- Use when pointers may alias or overlap
-- Document why dependency is needed
-- Avoid declaring unnecessary dependencies (reduces optimization potential)
+`@mdep` relates access labels only; it does not add pointer alias analysis.
 
 #### @bar - Optimization Barrier
 
 Insert an optimization barrier to control optimization scope:
 
 ```c
-// Syntax
+; Syntax
 @bar
 
-// No parameters
+; No parameters
 
-// Examples
+; Examples
 @icall setup_function
-@bar                          // Isolate optimizations
+@bar                          ; Isolate optimizations
 @icall critical_function
 @bar
 
 @icall config_cvccr, 3
 @icall config_scr, 3
-@bar    // Mark address of next instruction
+@bar    ; Mark address of next instruction
 @icall _axpby_kernel, addrX, addrY, N, alpha, beta, = r1, r2
 @bar
 ```
@@ -1358,8 +1342,8 @@ Insert an optimization barrier to control optimization scope:
 
 ```c
 @icall fast_function, input, = result
-@bar                                // Isolate optimizations
-@call slow_function, result         // Prevent optimization interference
+@bar                                ; Isolate optimizations
+@call slow_function, result         ; Prevent optimization interference
 ```
 
 **Use Case 2: Preventing Loop-Invariant Code Motion**:
@@ -1368,7 +1352,7 @@ Without `@bar`:
 ```c
 LOOP: 1, 100
     @icall dat_copy, CHANNEL0, addrX+CORE_ID*N_INC, 0X11, 0X12, 0x13
-    // LASM might hoist the inlined dat_copy outside the loop (WRONG)
+    ; LASM might hoist the inlined dat_copy outside the loop (WRONG)
 [c] sub 1, c, c
 [c] br LOOP
 ```
@@ -1376,10 +1360,10 @@ LOOP: 1, 100
 With `@bar`:
 ```c
 LOOP: 1, 100
-    @bar                              // Prevent hoisting
+    @bar                              ; Prevent hoisting
     @icall dat_copy, CHANNEL0, addrX+CORE_ID*N_INC, 0X11, 0X12, 0x13
-    // The inlined dat_copy function will be blocked by @bar
-    // and NOT hoisted outside the loop
+    ; The inlined dat_copy function will be blocked by @bar
+    ; and NOT hoisted outside the loop
 [c] sub 1, c, c
 [c] br LOOP
 ```
@@ -1387,26 +1371,26 @@ LOOP: 1, 100
 **Use Case 3: Isolating Optimization Contexts**:
 
 ```c
-// Setup phase
+; Setup phase
 @icall initialize_data
 @icall configure_system
-@bar                          // End setup phase
+@bar                          ; End setup phase
 
-// Computation phase (optimized separately)
+; Computation phase (optimized separately)
 @icall compute_kernel
-@bar                          // End computation phase
+@bar                          ; End computation phase
 
-// Cleanup phase
+; Cleanup phase
 @icall finalize_results
 ```
 
 **Use Case 4: Precise Performance Measurement**:
 
 ```c
-@bar                          // Start measurement point
+@bar                          ; Start measurement point
 @icall critical_kernel
-@bar                          // End measurement point
-// Ensures kernel code is not mixed with surrounding code
+@bar                          ; End measurement point
+; Ensures kernel code is not mixed with surrounding code
 ```
 
 **When to Use @bar**:
@@ -1427,38 +1411,38 @@ LOOP: 1, 100
 Duplicate the following instruction or instruction group N times:
 
 ```c
-// Syntax
+; Syntax
 @icp count
 instruction [| parallel_instruction]
 
-// Parameters:
-// - count: Number of times to copy (positive integer)
+; Parameters:
+; - count: Number of times to copy (positive integer)
 
-// Example 1: Single instruction
+; Example 1: Single instruction
 @icp 3
 vstor vr63, *ar2++[16]
 
-// Expands to:
-// vstor vr63, *ar2++[16]
-// vstor vr63, *ar2++[16]
-// vstor vr63, *ar2++[16]
+; Expands to:
+; vstor vr63, *ar2++[16]
+; vstor vr63, *ar2++[16]
+; vstor vr63, *ar2++[16]
 
-// Example 2: Parallel instructions
+; Example 2: Parallel instructions
 @icp 2
   vstor vr63, *ar2++[32]
 | vstor vr63, *+ar2[16]
 
-// Expands to:
-//   vstor vr63, *ar2++[32]
-// | vstor vr63, *+ar2[16]
-//   vstor vr63, *ar2++[32]
-// | vstor vr63, *+ar2[16]
+; Expands to:
+;   vstor vr63, *ar2++[32]
+; | vstor vr63, *+ar2[16]
+;   vstor vr63, *ar2++[32]
+; | vstor vr63, *+ar2[16]
 
-// Example 3: Multiple copies
+; Example 3: Multiple copies
 @icp 5
 vload *ar0++[16], vr1:vr0
 
-// Expands to 5 identical vload instructions
+; Expands to 5 identical vload instructions
 ```
 
 **Behavior**:
@@ -1479,10 +1463,10 @@ vload *ar0++[16], vr1:vr0
    ```c
    @icp 3
    load *ar0++[1], val
-   // First copy:  load *ar0++[1], val   (ar0 points to element 0, then increments)
-   // Second copy: load *ar0++[1], val   (ar0 points to element 1, then increments)
-   // Third copy:  load *ar0++[1], val   (ar0 points to element 2, then increments)
-   // After all: ar0 has been incremented 3 times
+   ; First copy:  load *ar0++[1], val   (ar0 points to element 0, then increments)
+   ; Second copy: load *ar0++[1], val   (ar0 points to element 1, then increments)
+   ; Third copy:  load *ar0++[1], val   (ar0 points to element 2, then increments)
+   ; After all: ar0 has been incremented 3 times
    ```
 
 **Use Cases**:
@@ -1491,14 +1475,14 @@ vload *ar0++[16], vr1:vr0
    ```c
    @icp 4
    vload *ar0++[16], vr0
-   // Loads 4 consecutive vector blocks
+   ; Loads 4 consecutive vector blocks
    ```
 
 2. **Initialization**:
    ```c
    @icp 8
    vstor vr_zero, *ar_buffer++[16]
-   // Zero out 8 vector regions
+   ; Zero out 8 vector regions
    ```
 
 3. **Pipeline Filling**:
@@ -1506,7 +1490,7 @@ vload *ar0++[16], vr1:vr0
    @icp 3
      vload *ar_in++[16], vr_temp
    | vadd vr_temp, vr_acc, vr_acc
-   // Fill pipeline with 3 parallel operation pairs
+   ; Fill pipeline with 3 parallel operation pairs
    ```
 
 **Interaction with Other Features**:
@@ -1515,14 +1499,14 @@ vload *ar0++[16], vr1:vr0
   ```c
   @icp 3
   add temp, 1, temp
-  // temp = temp + 1 (three times) → temp = temp + 3
+  ; temp = temp + 1 (three times) → temp = temp + 3
   ```
 
 - **Constants**: Constants are duplicated as-is
   ```c
   @icp 2
   mov 42, r0
-  // mov 42, r0 (twice) → Last write wins, r0 = 42
+  ; mov 42, r0 (twice) → Last write wins, r0 = 42
   ```
 
 **Limitations**:
@@ -1534,11 +1518,11 @@ vload *ar0++[16], vr1:vr0
 **Comparison with Manual Duplication**:
 
 ```c
-// Using @icp
+; Using @icp
 @icp 3
 vstor vr63, *ar2++[16]
 
-// Equivalent manual code
+; Equivalent manual code
 vstor vr63, *ar2++[16]
 vstor vr63, *ar2++[16]
 vstor vr63, *ar2++[16]
@@ -1571,17 +1555,17 @@ Four numeral systems are supported:
 Three forms are accepted:
 
 ```c
-// 1. IEEE754 hexadecimal (instruction operands only)
-mov 0x3FF0000000000000, r0    // Double-precision 1.0
+; 1. IEEE754 hexadecimal (instruction operands only)
+mov 0x3FF0000000000000, r0    ; Double-precision 1.0
 
-// 2. Decimal notation
+; 2. Decimal notation
 1.5
 -2.75
 3.0
 
-// 3. Scientific notation
-1.5e-3      // 0.0015
--2.5e+2     // -250.0
+; 3. Scientific notation
+1.5e-3      ; 0.0015
+-2.5e+2     ; -250.0
 ```
 
 Floating-point constants are interpreted as double-precision IEEE754 unless used in a context requiring a different precision.
@@ -1591,12 +1575,12 @@ Floating-point constants are interpreted as double-precision IEEE754 unless used
 Single characters enclosed in single quotes:
 
 ```c
-'a'     // 0x61
-'A'     // 0x41
-'\n'    // 0x0A (newline)
-'\\'    // 0x5C (backslash)
-'\''    // 0x27 (single quote)
-''      // 0x00 (empty character)
+'a'     ; 0x61
+'A'     ; 0x41
+'\n'    ; 0x0A (newline)
+'\\'    ; 0x5C (backslash)
+'\''    ; 0x27 (single quote)
+''      ; 0x00 (empty character)
 ```
 
 Characters are 8-bit ASCII values, zero-extended to 64 bits.
@@ -1606,19 +1590,19 @@ Characters are 8-bit ASCII values, zero-extended to 64 bits.
 Strings are sequences of characters:
 
 ```c
-"hello"         // Character sequence
-"line1\nline2"  // Escape sequences supported
+"hello"         ; Character sequence
+"line1\nline2"  ; Escape sequences supported
 ```
 
 **Behavior in Pseudo-Operations**:
 ```c
-@b32 x, "abc"                       // -> 'a', 'b', 'c' -> 0x616263 -> 0x00616263
-@b32 y, 'a'<< 4+'b'                 // ->  0x6162 -> 0x00006162
-@sect ".data", addx,@b8, "ab", 'c'  // 'ab', 'c' -> 0x6162, 0x63 -> 0x62, 0x63
-@sect ".data", addx, @b4 "ab", 'c'  // 'ab', 'c' -> 0x6162, 0x63 -> 0x2, 0x3
-@b1 x, 'c'                          // 'c' -> 0x01
-@b1 y, "ab"                         // 'ab' -> 0x00
-@sect ".data", addx, @b16,'a'<< 4+'b', 'c'<<4+'d'  // 0x6162, 0x6364
+@b32 x, "abc"                       ; -> 'a', 'b', 'c' -> 0x616263 -> 0x00616263
+@b32 y, 'a'<< 4+'b'                 ; ->  0x6162 -> 0x00006162
+@sect ".data", addx,@b8, "ab", 'c'  ; 'ab', 'c' -> 0x6162, 0x63 -> 0x62, 0x63
+@sect ".data", addx, @b4 "ab", 'c'  ; 'ab', 'c' -> 0x6162, 0x63 -> 0x2, 0x3
+@b1 x, 'c'                          ; 'c' -> 0x01
+@b1 y, "ab"                         ; 'ab' -> 0x00
+@sect ".data", addx, @b16,'a'<< 4+'b', 'c'<<4+'d'  ; 0x6162, 0x6364
 ```
 
 Strings are concatenated into integers, then stored according to the specified bit width. High-order bits are truncated if the string exceeds the width.
@@ -1631,7 +1615,7 @@ Symbols defined by storage pseudo-operations become symbolic constants:
 @b64 SIZE, 1024
 @bf PI, 3.14159
 
-// Can be used in expressions
+; Can be used in expressions
 @b64 DOUBLE_SIZE, SIZE * 2
 ```
 
@@ -1640,13 +1624,13 @@ Symbols defined by storage pseudo-operations become symbolic constants:
 Address indicators (memory locations, function names, labels) have properties:
 
 ```c
-.cnt    // Number of elements
-.gra    // Bytes per element (granularity)
+.cnt    ; Number of elements
+.gra    ; Bytes per element (granularity)
 
-// Example
+; Example
 @usect ".bss", buffer, @b32, 256
-// buffer.cnt = 256
-// buffer.gra = 4 (32 bits = 4 bytes)
+; buffer.cnt = 256
+; buffer.gra = 4 (32 bits = 4 bytes)
 ```
 
 ### Constant Expressions
@@ -1654,9 +1638,9 @@ Address indicators (memory locations, function names, labels) have properties:
 Combine constants using operators:
 
 ```c
-@b64 N, 24576 // 32             // Integer division
-@b64 size, N * 4                // Multiplication
-mov (i + 1) * 8, offset         // Expression in instruction
+@b64 N, 24576 // 32             ; Integer division
+@b64 size, N * 4                ; Multiplication
+mov (i + 1) * 8, offset         ; Expression in instruction
 ```
 
 **Operator Precedence** (highest to lowest):
@@ -1678,13 +1662,14 @@ mov (i + 1) * 8, offset         // Expression in instruction
 **Key Distinctions**:
 - `/` - Floating-point division (result is double-precision IEEE754)
 - `//` - Integer division with floor rounding
+- `%` - Modulo paired with floor division: `a = (a // b) * b + a % b`; a nonzero remainder has the divisor’s sign (`-7 % 3 = 2`, `7 % -3 = -2`). A zero divisor is an error.
 - If **any** operand is floating-point, result is double-precision
-- If **all** operands are integers, result is 64-bit integer
+- If **all** operands are integers, evaluation uses signed 64-bit integers. Addition, subtraction, multiplication and negation wrap modulo `2^64`; shifts use the count modulo 64, and `>>` is arithmetic. Integer division overflow also wraps to 64 bits.
 
 ```c
-@b64 x, (1 + 2) * 3     // Result: 9 (integer)
-@b64 y, (1.0 + 2) * 3   // Result: 0x4020000000000000 (double 9.0)
-@b64 z, 100 // 3        // Result: 33 (floor division)
+@b64 x, (1 + 2) * 3     ; Result: 9 (integer)
+@b64 y, (1.0 + 2) * 3   ; Result: 0x4020000000000000 (double 9.0)
+@b64 z, 100 // 3        ; Result: 33 (floor division)
 ```
 
 ## Program Structure
@@ -1692,7 +1677,7 @@ mov (i + 1) * 8, offset         // Expression in instruction
 ### Pseudo-Operation Scopes
 
 **Global Scope** (outside function bodies):
-- `@func`, `@main` - Function declarations
+- `@func`, `@main` - Function and entry declarations
 - `@sect`, `@usect` - Segment management
 - `@align` - Alignment directives
 - `@import` - File imports
@@ -1700,6 +1685,7 @@ mov (i + 1) * 8, offset         // Expression in instruction
 
 **Local Scope** (inside function bodies only):
 - `label:` - Labels and loop annotations
+- `@align` - Alignment of the next label (also global)
 - `@ret` - Function return
 - `@call`, `@icall` - Function calls
 - `@asg` - Register assignments
@@ -1714,29 +1700,29 @@ mov (i + 1) * 8, offset         // Expression in instruction
 Typical LAN file structure:
 
 ```c
-// 1. Imports
+; 1. Imports
 @import "../lib/utilities.lan", helper1, helper2
 
-// 2. Global constants
+; 2. Global constants
 @b64 BUFFER_SIZE, 4096
 @bf ALPHA, 0.5
 
-// 3. Data segments
+; 3. Data segments
 @sect ".data", init_array, @b32, 1, 2, 3, 4
 @usect ".bss", workspace, @b64, 256
 
-// 4. Code segment
+; 4. Code segment
 @sect ".text"
 
-// 5. Function definitions
+; 5. Function definitions
 @func helper arg1, arg2 {
-    // Implementation
+    ; Implementation
     @ret result
 }
 
 @main entry_point {
     @call helper, x, y, = z
-    @ret
+    ; Finish with the target platform's stop or idle protocol.
 }
 ```
 
@@ -1765,7 +1751,7 @@ Projects can span multiple LAN files:
 @main start {
     @call add, 10, 20, = x
     @call multiply, x, 3, = y
-    @ret
+    ; Finish with the target platform's stop or idle protocol.
 }
 ```
 

@@ -12,8 +12,8 @@
 <p><strong>🥔 V<span style="color:#f59e0b">L</span>IW <span style="color:#f59e0b">A</span>SSEMBLY <span style="color:#f59e0b">S</span>CHEDULING <span style="color:#f59e0b">M</span>ACHINE</strong></p>
 
 <p>
-  <a href="docs/article.pdf"><img alt="Paper" src="https://img.shields.io/badge/Paper-ACM%20TODAES-0085CA?logo=acm&amp;logoColor=white"></a>
-  <a href="#lasm"><img alt="LASM" src="https://img.shields.io/badge/LASM-3.2.5.2-F59E0B"></a>
+  <a href="https://doi.org/10.1145/3810954"><img alt="Paper" src="https://img.shields.io/badge/Paper-ACM%20TODAES-0085CA?logo=acm&amp;logoColor=white"></a>
+  <a href="#news"><img alt="LASM" src="https://img.shields.io/badge/LASM-4.0-F59E0B"></a>
   <a href="docs/LAN-spec-v2.0.md"><img alt="LAN" src="https://img.shields.io/badge/LAN-2.0-7B61FF"></a>
   <a href="#quick-start"><img alt="Platform" src="https://img.shields.io/badge/Platform-Linux%20x86__64-111111?logo=linux&amp;logoColor=white"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/License-MIT-2EA44F"></a>
@@ -21,7 +21,8 @@
 
 <p>
   <a href="#quick-start">Quick Start</a> ·
-  <a href="#project-structure">Project Structure</a> ·
+  <a href="#news">News</a> ·
+  <a href="#structure">Structure</a> ·
   <a href="docs/LAN-spec-v2.0.md">LAN Specification</a> ·
   <a href="potato/README.md">Potato Guide</a> ·
   <a href="#citation">Citation</a>
@@ -29,17 +30,29 @@
 
 </div>
 
+<a id="news"></a>
+
 > Complexity does not disappear, but it can be shifted. LASM uses LAN, a symbolic assembly interface, to separate VLIW-specific scheduling from the rest of compilation. This lets VLIW designers and mainstream general-purpose compiler toolchains each play to their strengths.
 
 LASM is an extensible scheduling framework for complete VLIW programs expressed in symbolic assembly. Its input language, **VLIW Assembly Notation (LAN)**, uses target ISA instructions with symbolic operands. Physical register bindings, functional unit assignments, and instruction bundling can be specified where needed and left to LASM elsewhere. LASM produces scheduled VLIW assembly with explicit cycle assignments and fully resolved resource bindings.
 
-Multiple strategies compete to schedule the same code region. LASM ranks their candidates by scheduling quality and register demand, then selects the highest-ranked feasible schedule. Its internal representation, the **Stratified Assembly Structure (SAS)**, allows scheduled and unscheduled code to coexist within a function. Standardized extension interfaces and reusable scheduling primitives help developers add new strategies. Alongside implementations of TDLS, IMS, and EMS, LASM introduces **LAEMS** for software pipelining and **FBBF** for scheduling across block boundaries.
+To support different VLIW architectures, LASM defines an internal abstraction of the VLIW architecture. This abstraction models the architecture in separate layers. All scheduling targets this abstract architecture rather than any concrete processor. For each target, the abstraction is configured with its register files, functional units, instruction set, and additional bundling constraints.
 
-In the paper’s evaluation across 13 benchmarks on two production VLIW-SIMD processors, LASM achieves geometric mean performance ratios of **103.6%** and **101.6%** relative to assembly hand-optimized by experts. LAN implementations use **72.6% fewer source lines** in total than the corresponding handwritten assembly implementations, excluding blank lines. An end-to-end YOLOv5 deployment reaches **95.9%** of expert assembly performance while reducing implementation effort from **9 to 3 engineer-weeks**.
+Multiple strategies compete to schedule the same code region. LASM ranks their candidates by scheduling quality and register demand, then selects the highest-ranked feasible schedule. Its internal representation, the **Stratified Assembly Structure (SAS)**, allows scheduled and unscheduled code to coexist within a common scheduling space. Developers can add new strategies through well-defined strategy interfaces and three scheduling primitives. LASM includes three widely used strategies: Top-Down List Scheduling (TDLS), Iterative Modulo Scheduling (IMS), and Swing Modulo Scheduling (SMS). It also includes two strategies that we propose: **Longevity-Aware Expanded Modulo Scheduling (LAEMS)** for software pipelining and **Front-Back Block Fusion (FBBF)** for scheduling across basic-block boundaries.
+
+## 🔥 News
+
+**2026-11** — **LASM 4.0 released.** Evaluated on the paper’s 13 benchmark programs at the same input scales, it improves on the results reported in the paper.
+
+| Performance relative to expert assembly | TODAES'26 | LASM 4.0 |
+|---|---:|---:|
+| 32-bit VLIW-SIMD DSP (geometric mean) | 103.6% | **105.5%** |
+| 64-bit VLIW-SIMD DSP (geometric mean) | 101.6% | **105.8%** |
+| Programs at or above expert level | 15 / 26 | **21 / 26** |
 
 ## Quick Start
 
-The repository includes a prebuilt LASM executable for the Potato target on Linux x86-64. No compilation is required.
+The repository includes a prebuilt LASM 4.0 executable for the Potato target on Linux x86-64. No compilation is required.
 
 ```bash
 git clone https://github.com/urays/lasm.git
@@ -49,7 +62,9 @@ chmod +x potato/tools/lasm
 ./potato/tools/lasm potato/lan4test/gemm_scalar.lan \
   --layout potato/tools/potato.json \
   --dce --licm \
-  --fbbfl --tdlsl \
+  --fbbf --tdls \
+  --sms --ims \
+  --laems --ec=0-8 \
   --output /tmp/lasm-gemm_scalar.s
 ```
 
@@ -64,12 +79,11 @@ sed -n '1,40p' /tmp/lasm-gemm_scalar.s
 
 [Potato](potato/README.md) is a fictional VLIW-SIMD reference architecture that illustrates target integration and code generation in LASM. The bundled executable is configured for Potato; [`potato.json`](potato/tools/potato.json) supplies its memory map and value-passing convention through `--layout`.
 
-## Project Structure
+## Structure
 
 ```text
 .
 ├── docs/
-│   ├── article.pdf                # Full paper
 │   └── LAN-spec-v2.0.md           # LAN syntax and semantics
 ├── potato/
 │   ├── README.md                  # Potato reference guide
@@ -80,11 +94,6 @@ sed -n '1,40p' /tmp/lasm-gemm_scalar.s
 ├── LICENSE
 └── README.md
 ```
-
-## Documentation
-
-- [LAN 2.0 specification](docs/LAN-spec-v2.0.md): formal language syntax and semantics.
-- [Potato guide](potato/README.md): reference architecture, instruction set, and compilation workflow.
 
 ## Citation
 

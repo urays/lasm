@@ -1,6 +1,6 @@
 # Potato VLIW Processor - LASM Extension Guide
 
-**Potato** is a fictional VLIW (Very Long Instruction Word) vector processor designed to demonstrate how to extend LASM for new VLIW architectures. It serves as a complete reference implementation showing machine description file structure, LAN assembly programs, and compilation workflow.
+**Potato** is a fictional VLIW (Very Long Instruction Word) vector processor designed to demonstrate how to extend LASM for new VLIW architectures. It serves as a reference implementation showing machine description file structure, LAN assembly programs, and compilation workflow.
 
 ---
 
@@ -21,7 +21,7 @@ chmod +x tools/lasm
 ./tools/lasm lan4test/gemm_scalar.lan \
     --layout tools/potato.json \
     --dce --licm \
-    --laems --ec=0-8 --ims --fbbfc --fbbfl --tdlsc --tdlsl \
+    --laems --ec=0-8 --ims --sms --fbbfc --fbbfl --tdlsc --tdlsl \
     --output gemm_scalar.s
 
 # Compile vector GEMM with fused multiply-add
@@ -79,13 +79,14 @@ LASM supports multiple scheduling strategies that can be composed:
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `--laems` | Cyclic (loop) | Longevity-Aware Expanded Modulo Scheduling (novel) |
+| `--laems` | Cyclic (loop) | Longevity-Aware Expanded Modulo Scheduling |
 | `--ec=<l-h>` | Parameter | Expansion Count range for LAEMS, e.g., `--ec=0-8` |
-| `--fbbfc` | Cyclic (loop) | Front-Back Block Fusion for loops (novel) |
-| `--fbbfl` | Linear (basic block) | Front-Back Block Fusion for basic blocks (novel) |
-| `--tdlsc` | Cyclic (loop) | Top-Down List Scheduler for loops (baseline) |
-| `--tdlsl` | Linear (basic block) | Top-Down List Scheduler for basic blocks (baseline) |
-| `--ims` | Cyclic (loop) | Iterative Modulo Scheduling (baseline) |
+| `--fbbfc` | Cyclic (loop) | Front-Back Block Fusion for loops |
+| `--fbbfl` | Linear (basic block) | Front-Back Block Fusion for basic blocks |
+| `--tdlsc` | Cyclic (loop) | Top-Down List Scheduler for loops |
+| `--tdlsl` | Linear (basic block) | Top-Down List Scheduler for basic blocks |
+| `--ims` | Cyclic (loop) | Iterative Modulo Scheduling |
+| `--sms` | Cyclic (loop) | Swing Modulo Scheduling |
 
 ### Pre-Scheduling Optimizations
 
@@ -94,7 +95,6 @@ LASM supports multiple scheduling strategies that can be composed:
 | `--dce` | Dead Code Elimination |
 | `--licm` | Loop Invariant Code Motion |
 | `--max-inline=<N>` | Maximum instructions for function inlining (default: 512) |
-| `--max-spill=<N>` | Maximum register spills allowed (default: 0) |
 
 ### Example: Full Multi-Strategy Compilation
 
@@ -118,18 +118,18 @@ LASM executes all enabled strategies in parallel and selects the best schedule f
 
 | Type | Name | Count | Width | Description |
 |------|------|-------|-------|-------------|
-| Scalar | `r0`-`r63` | 64 | 64-bit | General-purpose scalar registers |
-| Address | `ar0`-`ar15` | 16 | 36-bit | Address registers for memory operations |
-| Offset | `or0`-`or15` | 16 | 36-bit | Offset registers for addressing calculations |
-| Vector | `vr0`-`vr63` | 64 | 64-bit × 16 lanes | Vector registers (16-wide SIMD) |
+| Scalar | `R0`-`R63` | 64 | 64-bit | General-purpose scalar registers |
+| Address | `AR0`-`AR15` | 16 | 36-bit | Address registers for memory operations |
+| Offset | `OR0`-`OR15` | 16 | 36-bit | Offset registers for addressing calculations |
+| Vector | `VR0`-`VR63` | 64 | 64-bit × 16 lanes | Vector registers (16-wide SIMD) |
 
 **Register Naming**:
-- Register names are case-insensitive: `r0` = `R0`, `ar5` = `AR5`
-- Underscores optional: `ar_5` = `ar5`, `vr_10` = `vr10`
+- Register names are case-sensitive: `R0`, `AR5` and `VR10` are physical registers
+- Lowercase names such as `r0`, `ar_5` or `vr10` are symbolic variables allocated by LASM
 
 ### Functional Units
 
-Potato uses a 6-issue VLIW configuration (`_TARGET_CFG == 6`):
+Potato's default configuration (`_TARGET_CFG == 6`) has 15 functional units in 5 groups:
 
 | Unit | Group | Purpose |
 |------|-------|---------|
@@ -139,7 +139,7 @@ Potato uses a 6-issue VLIW configuration (`_TARGET_CFG == 6`):
 | D1, D2 | Group 3 | Vector load/store |
 | E1-E8 | Group 4 | Vector arithmetic (vadd, vmul, vmuladd, vsub) |
 
-Up to 6 instructions can execute in parallel (one per group) with multiple options within some groups.
+Each unit issues at most one instruction per cycle, so up to 15 instructions can execute in parallel. Units in the same group serve the same class of instructions.
 
 ### Instruction Set Summary
 
@@ -170,22 +170,22 @@ Up to 6 instructions can execute in parallel (one per group) with multiple optio
 
 ### Conditional Execution
 
-All instructions support conditional execution based on scalar register values:
+Scalar instructions can be predicated on `R0`-`R6`; vector arithmetic and vector memory instructions use vector predicates (`VR0`-`VR6`):
 ```c
-[r5] add 1, counter, counter    // Execute if r5 != 0
-[!r0] br exit_label              // Execute if r0 == 0
+[R5] add 1, counter, counter    ; Execute if R5 != 0
+[!R0] br exit_label              ; Execute if R0 == 0
 ```
 
 ### Instruction Parallelism
 
-Example maximum parallelism (6 instructions):
+Example of one VLIW packet (6 instructions issued in the same cycle):
 ```c
-  load *ar0++[1], r1             // A1 unit
-| load *ar1++[1], r2             // A2 unit
-| add r1, r2, r3                 // C1 unit
-| sub r4, r5, r6                 // C2 unit
-| vload *ar2++[16], vr1:vr0     // D1 unit
-| vadd vr1, vr2, vr3             // E1 unit
+  load *AR0++[1], R1             ; A1 unit
+| load *AR1++[1], R2             ; A2 unit
+| add R1, R2, R3                 ; C1 unit
+| sub R4, R5, R6                 ; C2 unit
+| vload *AR4++[16], VR1:VR0     ; D1 unit
+| vadd VR1, VR2, VR3             ; E1 unit
 ```
 
 Note: Actual parallel execution depends on dependencies and resource availability. LASM handles dependency analysis and resource conflict detection.
@@ -199,41 +199,42 @@ Note: Actual parallel execution depends on dependencies and resource availabilit
 Simple scalar GEMM (General Matrix Multiply) kernel demonstrating basic LAN features:
 
 ```c
-@sect ".text"                                    // Start code segment
-@func _sample_code addrA, addrB, addrC, M, N, K { // Function: C = A * B
-                                                  // Parameters: addresses and dimensions
-    // Initialize address pointers (symbolic variables, will be allocated to address registers)
-    mov addrA, aA                                 // aA points to matrix A
-    mov addrB, aB                                 // aB points to matrix B
-    mov addrC, aC                                 // aC points to matrix C (output)
-    mov M, i                                      // i = outer loop counter (M iterations)
+; Start code segment
+@sect ".text"
+@func _sample_code addrA, addrB, addrC, M, N, K { ; Function: C = A * B
+                                                  ; Parameters: addresses and dimensions
+    ; Initialize address pointers (symbolic variables, will be allocated to address registers)
+    mov addrA, aA                                 ; aA points to matrix A
+    mov addrB, aB                                 ; aB points to matrix B
+    mov addrC, aC                                 ; aC points to matrix C (output)
+    mov M, i                                      ; i = outer loop counter (M iterations)
 
-_LOOP_M:                                          // Outer loop: iterate over M rows
-    mov N, j                                      // j = middle loop counter (N iterations)
-    _LOOP_N: 512, 512                             // Middle loop: N columns (bounds hint: exactly 512)
-        mov 0, ts                                 // ts = temporary sum (accumulator for dot product)
-        mov K, k                                  // k = inner loop counter (K iterations)
-        _LOOP_K: 64, 64                           // Inner loop: K elements (bounds hint: exactly 64)
-            load *aA++[1], ta                     // Load A[i,k] into ta, then aA += 1
-            load *aB++[1], tb                     // Load B[k,j] into tb, then aB += 1
-            mul ta, tb, t                         // t = ta * tb (multiply corresponding elements)
-            add t, ts, ts                         // ts += t (accumulate into sum)
-            sub 1, k, k                           // k-- (decrement inner loop counter)
-            [k] br _LOOP_K                        // If k != 0, branch back to _LOOP_K (continue inner loop)
+_LOOP_M:                                          ; Outer loop: iterate over M rows
+    mov N, j                                      ; j = middle loop counter (N iterations)
+    _LOOP_N: 512, 512                             ; Middle loop: N columns (bounds hint: exactly 512)
+        mov 0, ts                                 ; ts = temporary sum (accumulator for dot product)
+        mov K, k                                  ; k = inner loop counter (K iterations)
+        _LOOP_K: 64, 64                           ; Inner loop: K elements (bounds hint: exactly 64)
+            load *aA++[1], ta                     ; Load A[i,k] into ta, then aA += 1
+            load *aB++[1], tb                     ; Load B[k,j] into tb, then aB += 1
+            mul ta, tb, t                         ; t = ta * tb (multiply corresponding elements)
+            add t, ts, ts                         ; ts += t (accumulate into sum)
+            sub 1, k, k                           ; k-- (decrement inner loop counter)
+            [k] br _LOOP_K                        ; If k != 0, branch back to _LOOP_K (continue inner loop)
 
-        // Inner loop done: ts contains dot product result
-        load *aC++[1], tc                         // Load C[i,j] into tc, then aC += 1
-        sub ts, tc, tc                            // tc = ts - tc (compute final value: A*B - C)
-        stor tc, *aC                              // Store tc back to C[i,j] (aC already incremented)
-        sub 1, j, j                               // j-- (decrement middle loop counter)
-        [j] br _LOOP_N                            // If j != 0, branch back to _LOOP_N (continue middle loop)
+        ; Inner loop done: ts contains dot product result
+        load *aC++[1], tc                         ; Load C[i,j] into tc, then aC += 1
+        sub ts, tc, tc                            ; tc = ts - tc (compute final value: A*B - C)
+        stor tc, *aC                              ; Store tc back to C[i,j] (aC already incremented)
+        sub 1, j, j                               ; j-- (decrement middle loop counter)
+        [j] br _LOOP_N                            ; If j != 0, branch back to _LOOP_N (continue middle loop)
 
-    // Middle loop done
-    sub 1, i, i                                   // i-- (decrement outer loop counter)
-    [i] br _LOOP_M                                // If i != 0, branch back to _LOOP_M (continue outer loop)
+    ; Middle loop done
+    sub 1, i, i                                   ; i-- (decrement outer loop counter)
+    [i] br _LOOP_M                                ; If i != 0, branch back to _LOOP_M (continue outer loop)
 
-    // All loops done
-    @ret                                          // Return from function (no return value)
+    ; All loops done
+    @ret                                          ; Return from function (no return value)
 }
 ```
 
@@ -250,67 +251,68 @@ _LOOP_M:                                          // Outer loop: iterate over M 
 Vector GEMM using separate `vmul` and `vadd` instructions for explicit pipeline control:
 
 ```c
-@sect ".text"                                    // Start code segment
-@func _sgemm_64_mul_and_add addrA, addrB, addrC, M, K, N { // Vector GEMM: C = A * B
-                                                            // Operates on 64-element vectors
+; Start code segment
+@sect ".text"
+@func _sgemm_64_mul_and_add addrA, addrB, addrC, M, K, N { ; Vector GEMM: C = A * B
+                                                            ; Operates on 64-element vectors
 
-    // Initialize loop counter and address pointers
-    mov     M, i                                 // i = outer loop counter (M iterations)
-    mov     addrA, ar_a                          // ar_a = pointer to matrix A
-    mov     addrC, ar_c                          // ar_c = pointer to matrix C (output)
+    ; Initialize loop counter and address pointers
+    mov     M, i                                 ; i = outer loop counter (M iterations)
+    mov     addrA, ar_a                          ; ar_a = pointer to matrix A
+    mov     addrC, ar_c                          ; ar_c = pointer to matrix C (output)
 
-_LOOP_M:                                         // Outer loop: iterate over M rows
-    mov     addrB, ar_b                          // Reset ar_b to start of matrix B for each row
-    mov     K, k                                 // k = inner loop counter (K iterations)
+_LOOP_M:                                         ; Outer loop: iterate over M rows
+    mov     addrB, ar_b                          ; Reset ar_b to start of matrix B for each row
+    mov     K, k                                 ; k = inner loop counter (K iterations)
 
-    // Initialize vector accumulators to zero (will hold partial sums)
-    vmov    0, ab_0                              // ab_0 = zero vector (lower 16 FP32 elements)
-    vmov    0, ab_1                              // ab_1 = zero vector (upper 16 FP32 elements)
-                                                 // Together ab_1:ab_0 handles 32 FP32 elements
+    ; Initialize vector accumulators to zero (will hold partial sums)
+    vmov    0, ab_0                              ; ab_0 = zero vector (lower 16 FP32 elements)
+    vmov    0, ab_1                              ; ab_1 = zero vector (upper 16 FP32 elements)
+                                                 ; Together ab_1:ab_0 handles 32 FP32 elements
 
-_LOOP_K: 512, 512                                // Inner loop: K iterations (bounds hint: exactly 512)
-    // Load scalar from A and broadcast to all vector lanes
-    load    *ar_a++, a_1                         // Load A[i,k] (scalar), then ar_a += 1
-    bcast   a_1, a_N                             // Broadcast a_1 to all lanes of vector a_N
-                                                 // Now a_N = {a_1, a_1, a_1, ..., a_1}
+_LOOP_K: 512, 512                                ; Inner loop: K iterations (bounds hint: exactly 512)
+    ; Load scalar from A and broadcast to all vector lanes
+    load    *ar_a++, a_1                         ; Load A[i,k] (scalar), then ar_a += 1
+    bcast   a_1, a_N                             ; Broadcast a_1 to all lanes of vector a_N
+                                                 ; Now a_N = {a_1, a_1, a_1, ..., a_1}
 
-    // Load vector from B (32 FP32 elements = 2 vector registers)
-    vload   *ar_b++[16], b_1:b_0                 // Load B[k,j:j+31] into register pair
-                                                 // b_0 = B[k, j:j+15] (16 FP32 elements)
-                                                 // b_1 = B[k, j+16:j+31] (16 FP32 elements)
-                                                 // Then ar_b += 16 (advance by 16 elements)
+    ; Load vector from B (32 FP32 elements = 2 vector registers)
+    vload   *ar_b++[16], b_1:b_0                 ; Load B[k,j:j+31] into register pair
+                                                 ; b_0 = B[k, j:j+15] (16 FP32 elements)
+                                                 ; b_1 = B[k, j+16:j+31] (16 FP32 elements)
+                                                 ; Then ar_b += 16 (advance by 16 elements)
 
-    ;;;                                          // Cycle boundary separator (scheduling hint)
-                                                 // Marks VLIW instruction word boundary
+    ;;;                                          ; Visual separator (a comment)
+                                                 ; Marks VLIW instruction word boundary
 
-    // Perform vector multiply and add (separate operations)
-    vmul    b_0, a_N, t0                         // t0 = b_0 * a_N (element-wise multiply, 16 elements)
-    vadd    t0, ab_0, ab_0                       // ab_0 += t0 (accumulate into lower accumulator)
-    vmul    b_1, a_N, t1                         // t1 = b_1 * a_N (element-wise multiply, 16 elements)
-    vadd    t1, ab_1, ab_1                       // ab_1 += t1 (accumulate into upper accumulator)
+    ; Perform vector multiply and add (separate operations)
+    vmul    b_0, a_N, t0                         ; t0 = b_0 * a_N (element-wise multiply, 16 elements)
+    vadd    t0, ab_0, ab_0                       ; ab_0 += t0 (accumulate into lower accumulator)
+    vmul    b_1, a_N, t1                         ; t1 = b_1 * a_N (element-wise multiply, 16 elements)
+    vadd    t1, ab_1, ab_1                       ; ab_1 += t1 (accumulate into upper accumulator)
 
-    ;;;                                          // Cycle boundary separator
+    ;;;                                          ; Visual separator (a comment)
 
-[k] sub     1, k, k                              // k-- (decrement inner loop counter)
-[k] br      _LOOP_K                              // If k != 0, continue inner loop
+[k] sub     1, k, k                              ; k-- (decrement inner loop counter)
+[k] br      _LOOP_K                              ; If k != 0, continue inner loop
 
-    // Inner loop done: ab_1:ab_0 contains accumulated results
+    ; Inner loop done: ab_1:ab_0 contains accumulated results
 
-    // Load C vector, compute final result, and store back
-    vload   *ar_c, c_1:c_0                       // Load C[i, j:j+31] into register pair
-                                                 // c_0 = C[i, j:j+15], c_1 = C[i, j+16:j+31]
+    ; Load C vector, compute final result, and store back
+    vload   *ar_c, c_1:c_0                       ; Load C[i, j:j+31] into register pair
+                                                 ; c_0 = C[i, j:j+15], c_1 = C[i, j+16:j+31]
 
-    vsub    ab_0, c_0, c_0                       // c_0 = ab_0 - c_0 (compute final lower 16 elements)
-    vsub    ab_1, c_1, c_1                       // c_1 = ab_1 - c_1 (compute final upper 16 elements)
+    vsub    ab_0, c_0, c_0                       ; c_0 = ab_0 - c_0 (compute final lower 16 elements)
+    vsub    ab_1, c_1, c_1                       ; c_1 = ab_1 - c_1 (compute final upper 16 elements)
 
-    vstor   c_1:c_0, *ar_c++[16]                 // Store c_1:c_0 back to C[i, j:j+31]
-                                                 // Then ar_c += 16 (advance by 16 elements)
+    vstor   c_1:c_0, *ar_c++[16]                 ; Store c_1:c_0 back to C[i, j:j+31]
+                                                 ; Then ar_c += 16 (advance by 16 elements)
 
-[i] sub     1, i, i                              // i-- (decrement outer loop counter)
-[i] br      _LOOP_M                              // If i != 0, continue outer loop
+[i] sub     1, i, i                              ; i-- (decrement outer loop counter)
+[i] br      _LOOP_M                              ; If i != 0, continue outer loop
 
-    // All loops done
-    @ret                                         // Return from function
+    ; All loops done
+    @ret                                         ; Return from function
 }
 ```
 
@@ -318,70 +320,71 @@ _LOOP_K: 512, 512                                // Inner loop: K iterations (bo
 - **Vector Register Pairs**: `b_1:b_0` and `c_1:c_0` hold 32 FP32 elements (2×16)
 - **Broadcasting**: `bcast a_1, a_N` replicates scalar to all vector lanes
 - **Vector Load/Store**: `vload`, `vstor` handle multiple elements per instruction
-- **Cycle Boundaries**: `;;;` marks VLIW instruction word boundaries for scheduling
+- **Visual Separators**: `;;;` is a comment that groups related instructions; LASM decides the actual bundling
 - **Vector Arithmetic**: `vmul`, `vadd`, `vsub` operate element-wise on vectors
 - **Separate Multiply-Add**: Explicit `vmul` followed by `vadd` (vs. fused in Example 3)
 - **Post-Increment Addressing**: `*ar_b++[16]` advances pointer by 16 elements
 
 ### Example 3: Vector GEMM with Fused Multiply-Add
 
-Optimized version using `vmuladd` instruction for better performance:
+Version using the fused `vmuladd` instruction:
 
 ```c
-@sect ".text"                                    // Start code segment
-@func _sgemm_64_muladd addrA, addrB, addrC, M, K, N { // Vector GEMM: C = A * B
-                                                      // Uses fused multiply-add for efficiency
+; Start code segment
+@sect ".text"
+@func _sgemm_64_muladd addrA, addrB, addrC, M, K, N { ; Vector GEMM: C = A * B
+                                                      ; Uses fused multiply-add for efficiency
 
-    // Initialize loop counter and address pointers (identical to Example 2)
-    mov     M, i                                 // i = outer loop counter (M iterations)
-    mov     addrA, ar_a                          // ar_a = pointer to matrix A
-    mov     addrC, ar_c                          // ar_c = pointer to matrix C (output)
+    ; Initialize loop counter and address pointers (identical to Example 2)
+    mov     M, i                                 ; i = outer loop counter (M iterations)
+    mov     addrA, ar_a                          ; ar_a = pointer to matrix A
+    mov     addrC, ar_c                          ; ar_c = pointer to matrix C (output)
 
-_LOOP_M:                                         // Outer loop: iterate over M rows
-    mov     addrB, ar_b                          // Reset ar_b to start of matrix B for each row
-    mov     K, k                                 // k = inner loop counter (K iterations)
+_LOOP_M:                                         ; Outer loop: iterate over M rows
+    mov     addrB, ar_b                          ; Reset ar_b to start of matrix B for each row
+    mov     K, k                                 ; k = inner loop counter (K iterations)
 
-    // Initialize vector accumulators to zero
-    vmov    0, ab_0                              // ab_0 = zero vector (lower 16 FP32 elements)
-    vmov    0, ab_1                              // ab_1 = zero vector (upper 16 FP32 elements)
+    ; Initialize vector accumulators to zero
+    vmov    0, ab_0                              ; ab_0 = zero vector (lower 16 FP32 elements)
+    vmov    0, ab_1                              ; ab_1 = zero vector (upper 16 FP32 elements)
 
-_LOOP_K: 512, 512                                // Inner loop: K iterations (bounds hint: exactly 512)
-    // Load and broadcast scalar from A (identical to Example 2)
-    load    *ar_a++, a_1                         // Load A[i,k] (scalar), then ar_a += 1
-    bcast   a_1, a_N                             // Broadcast a_1 to all lanes of vector a_N
+_LOOP_K: 512, 512                                ; Inner loop: K iterations (bounds hint: exactly 512)
+    ; Load and broadcast scalar from A (identical to Example 2)
+    load    *ar_a++, a_1                         ; Load A[i,k] (scalar), then ar_a += 1
+    bcast   a_1, a_N                             ; Broadcast a_1 to all lanes of vector a_N
 
-    // Load vector from B (identical to Example 2)
-    vload   *ar_b++[16], b_1:b_0                 // Load B[k,j:j+31] into register pair
-                                                 // b_0 = lower 16 elements, b_1 = upper 16 elements
-                                                 // Then ar_b += 16
+    ; Load vector from B (identical to Example 2)
+    vload   *ar_b++[16], b_1:b_0                 ; Load B[k,j:j+31] into register pair
+                                                 ; b_0 = lower 16 elements, b_1 = upper 16 elements
+                                                 ; Then ar_b += 16
 
-    ;;;                                          // Cycle boundary separator
+    ;;;                                          ; Visual separator (a comment)
 
-    // FUSED multiply-add operations (KEY DIFFERENCE from Example 2)
-    vmuladd b_0, a_N, ab_0, ab_0                 // ab_0 = b_0 * a_N + ab_0
-                                                 // Fuses multiply and add into single operation
-                                                 // Syntax: vmuladd src1, src2, src3, dest
-                                                 // Computes: dest = src1 * src2 + src3
+    ; FUSED multiply-add operations (KEY DIFFERENCE from Example 2)
+    vmuladd b_0, a_N, ab_0, ab_0                 ; ab_0 = b_0 * a_N + ab_0
+                                                 ; Fuses multiply and add into single operation
+                                                 ; Syntax: vmuladd src1, src2, src3, dest
+                                                 ; Computes: dest = src1 * src2 + src3
 
-    vmuladd b_1, a_N, ab_1, ab_1                 // ab_1 = b_1 * a_N + ab_1
-                                                 // Same fused operation for upper 16 elements
+    vmuladd b_1, a_N, ab_1, ab_1                 ; ab_1 = b_1 * a_N + ab_1
+                                                 ; Same fused operation for upper 16 elements
 
-    ;;;                                          // Cycle boundary separator
+    ;;;                                          ; Visual separator (a comment)
 
-[k] sub     1, k, k                              // k-- (decrement inner loop counter)
-[k] br      _LOOP_K                              // If k != 0, continue inner loop
+[k] sub     1, k, k                              ; k-- (decrement inner loop counter)
+[k] br      _LOOP_K                              ; If k != 0, continue inner loop
 
-    // Post-loop processing (identical to Example 2)
-    vload   *ar_c, c_1:c_0                       // Load C[i, j:j+31] into register pair
-    vsub    ab_0, c_0, c_0                       // c_0 = ab_0 - c_0 (compute final lower 16 elements)
-    vsub    ab_1, c_1, c_1                       // c_1 = ab_1 - c_1 (compute final upper 16 elements)
-    vstor   c_1:c_0, *ar_c++[16]                 // Store results back to C[i, j:j+31]
+    ; Post-loop processing (identical to Example 2)
+    vload   *ar_c, c_1:c_0                       ; Load C[i, j:j+31] into register pair
+    vsub    ab_0, c_0, c_0                       ; c_0 = ab_0 - c_0 (compute final lower 16 elements)
+    vsub    ab_1, c_1, c_1                       ; c_1 = ab_1 - c_1 (compute final upper 16 elements)
+    vstor   c_1:c_0, *ar_c++[16]                 ; Store results back to C[i, j:j+31]
 
-[i] sub     1, i, i                              // i-- (decrement outer loop counter)
-[i] br      _LOOP_M                              // If i != 0, continue outer loop
+[i] sub     1, i, i                              ; i-- (decrement outer loop counter)
+[i] br      _LOOP_M                              ; If i != 0, continue outer loop
 
-    // All loops done
-    @ret                                         // Return from function
+    ; All loops done
+    @ret                                         ; Return from function
 }
 ```
 
@@ -396,7 +399,7 @@ _LOOP_K: 512, 512                                // Inner loop: K iterations (bo
    - Reduced instruction count → fewer VLIW instruction words
    - Better instruction packing → more parallel execution
    - Fewer intermediate registers → reduced register pressure
-   - Single latency penalty instead of two → faster execution
+   - One latency instead of two → shorter dependency chain
 
 3. **Hardware Efficiency**:
    - `vmuladd` typically uses dedicated FMA (Fused Multiply-Add) units
@@ -409,7 +412,7 @@ _LOOP_K: 512, 512                                // Inner loop: K iterations (bo
 |--------|---------------------|-------------------|
 | Instructions per iteration | 4 arithmetic ops | 2 arithmetic ops |
 | Register pressure | Higher (need temp t0, t1) | Lower (no temps) |
-| Latency | 2× (mul + add) | 1× (fused) |
+| Latency | 7 cycles (`vmul` 6 + `vadd` 1) | 6 cycles |
 | Numerical accuracy | 2 rounding steps | 1 rounding step |
 | Code size | Larger | Smaller |
 
@@ -422,45 +425,46 @@ _LOOP_K: 512, 512                                // Inner loop: K iterations (bo
 Demonstrating explicit register allocation using `@asg`:
 
 ```c
-@func compute_kernel addr_in, addr_out, N {     // Function: sum elements and store result
-                                                 // Parameters: input addr, output addr, count
+@sect ".text"
+@func compute_kernel addr_in, addr_out, N {     ; Function: sum elements and store result
+                                                 ; Parameters: input addr, output addr, count
 
-    // EXPLICIT REGISTER ASSIGNMENTS (using @asg directive)
-    @asg addr_in, ar0                            // Force addr_in to use address register ar0
-                                                 // From now on, addr_in is synonymous with ar0
-    @asg addr_out, ar1                           // Force addr_out to use address register ar1
-    @asg N, r10                                  // Force N to use scalar register r10
+    ; EXPLICIT REGISTER ASSIGNMENTS (using @asg directive)
+    @asg addr_in, AR0                            ; Force addr_in to use address register AR0
+                                                 ; From now on, addr_in is synonymous with AR0
+    @asg addr_out, AR1                           ; Force addr_out to use address register AR1
+    @asg N, R5                                   ; Force N to use scalar register R5
 
-    // Initialize accumulator (symbolic variable, will be auto-allocated)
-    mov 0, sum                                   // sum = 0 (framework chooses register for 'sum')
+    ; Initialize accumulator (symbolic variable, will be auto-allocated)
+    mov 0, sum                                   ; sum = 0 (framework chooses register for 'sum')
 
-loop: 1, 1000                                    // Loop: 1 to 1000 iterations (bounds hint)
-    load *ar0++[1], val                          // Load value from *ar0 into 'val'
-                                                 // Then ar0 += 1 (advance to next element)
-                                                 // 'val' is a symbolic variable (auto-allocated)
+loop: 1, 1000                                    ; Loop: 1 to 1000 iterations (bounds hint)
+    load *AR0++[1], val                          ; Load value from *AR0 into 'val'
+                                                 ; Then AR0 += 1 (advance to next element)
+                                                 ; 'val' is a symbolic variable (auto-allocated)
 
-    add sum, val, sum                            // sum += val (accumulate)
+    add sum, val, sum                            ; sum += val (accumulate)
 
-    sub 1, r10, r10                              // r10-- (decrement N, which is assigned to r10)
-                                                 // Using explicit register r10 because of @asg
+    sub 1, R5, R5                                ; R5-- (decrement N, which is assigned to R5)
+                                                 ; Using explicit register R5 because of @asg
 
-    [r10] br loop                                // If r10 != 0, continue loop
-                                                 // Conditional branch on explicitly assigned register
+    [R5] br loop                                 ; If R5 != 0, continue loop
+                                                 ; Conditional branch on explicitly assigned register
 
-    // Store result
-    stor sum, *ar1                               // Store accumulated sum to *ar1 (output address)
-                                                 // ar1 is the explicitly assigned register for addr_out
+    ; Store result
+    stor sum, *AR1                               ; Store accumulated sum to *AR1 (output address)
+                                                 ; AR1 is the explicitly assigned register for addr_out
 
-    @ret                                         // Return from function
+    @ret                                         ; Return from function
 }
 ```
 
 **Key Features Demonstrated**:
 
 1. **Explicit Register Assignment (`@asg`)**:
-   - `@asg addr_in, ar0` → All uses of `addr_in` map to `ar0`
-   - `@asg addr_out, ar1` → All uses of `addr_out` map to `ar1`
-   - `@asg N, r10` → All uses of `N` map to `r10`
+   - `@asg addr_in, AR0` → All uses of `addr_in` map to `AR0`
+   - `@asg addr_out, AR1` → All uses of `addr_out` map to `AR1`
+   - `@asg N, R5` → All uses of `N` map to `R5`
    - Framework will NOT re-allocate these variables
 
 2. **Mixed Allocation Strategy**:
@@ -469,9 +473,9 @@ loop: 1, 1000                                    // Loop: 1 to 1000 iterations (
    - This provides control where needed, flexibility where possible
 
 3. **Register Usage**:
-   - `ar0`, `ar1`: Explicitly assigned address registers (user-controlled)
-   - `r10`: Explicitly assigned scalar register (user-controlled)
-   - Registers for `sum` and `val`: Framework-chosen (optimal allocation)
+   - `AR0`, `AR1`: Explicitly assigned address registers (user-controlled)
+   - `R5`: Explicitly assigned scalar register (user-controlled)
+   - Registers for `sum` and `val`: Framework-chosen
 
 **Why Use @asg**:
 
@@ -482,27 +486,28 @@ loop: 1, 1000                                    // Loop: 1 to 1000 iterations (
 
 **Without @asg** (for comparison):
 ```c
+@sect ".text"
 @func compute_kernel addr_in, addr_out, N {
-    // No @asg directives
-    // Framework automatically allocates ALL registers
+    ; No @asg directives
+    ; Framework automatically allocates ALL registers
     mov 0, sum
 loop: 1, 1000
-    load *addr_in++[1], val       // Framework chooses register for addr_in
+    load *addr_in++[1], val       ; Framework chooses register for addr_in
     add sum, val, sum
-    sub 1, N, N                   // Framework chooses register for N
+    sub 1, N, N                   ; Framework chooses register for N
     [N] br loop
-    stor sum, *addr_out           // Framework chooses register for addr_out
+    stor sum, *addr_out           ; Framework chooses register for addr_out
     @ret
 }
-// Framework has full flexibility to optimize register allocation
+; Framework has full flexibility to optimize register allocation
 ```
 
 **Trade-offs**:
 
 | Approach | Pros | Cons |
 |----------|------|------|
-| With @asg | Predictable, user control | May suboptimal, less flexibility |
-| Without @asg | Optimal allocation, flexible | Less predictable, harder to debug |
+| With @asg | Predictable, user control | Constrains allocation and scheduling |
+| Without @asg | LASM chooses all registers | Less predictable, harder to debug |
 
 ### Example 5: Multi-File Program
 
@@ -510,91 +515,97 @@ Demonstrating modular program structure with cross-file function calls:
 
 **File: vector_ops.lan** (Library file with reusable vector operations)
 ```c
-@sect ".text"                                    // Start code segment
+; Start code segment
+@sect ".text"
 
-@func vector_add vec_a, vec_b, vec_c, count {   // Vector addition: vec_c = vec_a + vec_b
-                                                 // Parameters: three vector addresses, element count
+@func vector_add vec_a, vec_b, vec_c, count {   ; Vector addition: vec_c = vec_a + vec_b
+                                                 ; Parameters: three vector addresses, element count
 
-    // Initialize address pointers
-    mov vec_a, ar_a                              // ar_a points to input vector A
-    mov vec_b, ar_b                              // ar_b points to input vector B
-    mov vec_c, ar_c                              // ar_c points to output vector C
-    mov count, k                                 // k = loop counter (number of vector blocks)
+    ; Initialize address pointers
+    mov vec_a, ar_a                              ; ar_a points to input vector A
+    mov vec_b, ar_b                              ; ar_b points to input vector B
+    mov vec_c, ar_c                              ; ar_c points to output vector C
+    mov count, k                                 ; k = loop counter (number of vector blocks)
 
-loop: 1, 64                                      // Loop: process up to 64 vector blocks
-                                                 // Each iteration handles 32 FP32 elements (2 vectors)
+loop: 1, 64                                      ; Loop: process up to 64 vector blocks
+                                                 ; Each iteration handles 32 FP32 elements (2 vectors)
 
-    // Load vectors from A and B (32 elements = 2 vector registers)
-    vload *ar_a++[16], a_1:a_0                   // Load A[i:i+31] into register pair a_1:a_0
-                                                 // a_0 = A[i:i+15], a_1 = A[i+16:i+31]
-                                                 // Then ar_a += 16 (advance by 16 elements)
+    ; Load vectors from A and B (32 elements = 2 vector registers)
+    vload *ar_a++[16], a_1:a_0                   ; Load A[i:i+31] into register pair a_1:a_0
+                                                 ; a_0 = A[i:i+15], a_1 = A[i+16:i+31]
+                                                 ; Then ar_a += 16 (advance by 16 elements)
 
-    vload *ar_b++[16], b_1:b_0                   // Load B[i:i+31] into register pair b_1:b_0
-                                                 // b_0 = B[i:i+15], b_1 = B[i+16:i+31]
-                                                 // Then ar_b += 16
+    vload *ar_b++[16], b_1:b_0                   ; Load B[i:i+31] into register pair b_1:b_0
+                                                 ; b_0 = B[i:i+15], b_1 = B[i+16:i+31]
+                                                 ; Then ar_b += 16
 
-    // Perform element-wise addition
-    vadd a_0, b_0, c_0                           // c_0 = a_0 + b_0 (lower 16 elements)
-    vadd a_1, b_1, c_1                           // c_1 = a_1 + b_1 (upper 16 elements)
+    ; Perform element-wise addition
+    vadd a_0, b_0, c_0                           ; c_0 = a_0 + b_0 (lower 16 elements)
+    vadd a_1, b_1, c_1                           ; c_1 = a_1 + b_1 (upper 16 elements)
 
-    // Store result vector
-    vstor c_1:c_0, *ar_c++[16]                   // Store C[i:i+31] = c_1:c_0
-                                                 // Then ar_c += 16 (advance output pointer)
+    ; Store result vector
+    vstor c_1:c_0, *ar_c++[16]                   ; Store C[i:i+31] = c_1:c_0
+                                                 ; Then ar_c += 16 (advance output pointer)
 
-    // Loop control
-    sub 1, k, k                                  // k-- (decrement loop counter)
-    [k] br loop                                  // If k != 0, continue loop
+    ; Loop control
+    sub 1, k, k                                  ; k-- (decrement loop counter)
+    [k] br loop                                  ; If k != 0, continue loop
 
-    @ret                                         // Return from function (no return value)
+    @ret                                         ; Return from function (no return value)
 }
-// This function can be imported and used by other files
+; This function can be imported and used by other files
 ```
 
 **File: main.lan** (Main program that uses the library)
 ```c
-// IMPORT FUNCTION FROM LIBRARY FILE
-@import "vector_ops.lan", vector_add            // Import vector_add function from vector_ops.lan
-                                                // Now we can call vector_add in this file
+; IMPORT FUNCTION FROM LIBRARY FILE
+@import "vector_ops.lan", vector_add            ; Import vector_add function from vector_ops.lan
+                                                ; Now we can call vector_add in this file
 
-// INITIALIZE DATA IN .data SEGMENT
+; INITIALIZE DATA IN .data SEGMENT
 @sect ".data", array_a, @b32, 1, 2, 3, 4, 5, 6, 7, 8
-                                                // Define array_a in .data segment
-                                                // Initialize with 8 32-bit values: 1,2,3,4,5,6,7,8
-                                                // array_a.cnt = 8, array_a.gra = 4
+                                                ; Define array_a in .data segment
+                                                ; Initialize with 8 32-bit values: 1,2,3,4,5,6,7,8
+                                                ; array_a.cnt = 8, array_a.gra = 4
 
 @sect ".data", array_b, @b32, 10, 20, 30, 40, 50, 60, 70, 80
-                                                // Define array_b in .data segment
-                                                // Initialize with 8 32-bit values: 10,20,30,40,50,60,70,80
-                                                // array_b.cnt = 8, array_b.gra = 4
+                                                ; Define array_b in .data segment
+                                                ; Initialize with 8 32-bit values: 10,20,30,40,50,60,70,80
+                                                ; array_b.cnt = 8, array_b.gra = 4
 
-// RESERVE SPACE IN .bss SEGMENT (uninitialized)
-@usect ".bss", array_c, @b32, 8                 // Reserve space for array_c in .bss segment
-                                                // 8 elements × 4 bytes = 32 bytes total
-                                                // array_c.cnt = 8, array_c.gra = 4
-                                                // After @usect, automatically return to previous segment (.data)
+; RESERVE SPACE IN .bss SEGMENT (uninitialized)
+; Reserve space for array_c in .bss segment
+@usect ".bss", array_c, @b32, 8
+                                                ; 8 elements × 4 bytes = 32 bytes total
+                                                ; array_c.cnt = 8, array_c.gra = 4
+                                                ; After @usect, automatically return to previous segment (.data)
 
-// DEFINE CONSTANT
-@b64 COUNT, 1                                   // COUNT = 1 (process 1 vector block)
-                                                // Since arrays have 8 elements each,
-                                                // and loop processes 32 elements per iteration,
-                                                // COUNT=1 is insufficient for full arrays
-                                                // (This is likely a bug; should be COUNT = 1)
+; DEFINE CONSTANT
+@b64 COUNT, 1                                   ; COUNT = 1 (process 1 vector block)
 
-// DEFINE ENTRY POINT
-@main test_addition {                           // Main function (program entry point)
+; DEFINE ENTRY POINT
+; Switch back to the code segment
+@sect ".text"
+@main test_addition {                           ; Main function (program entry point)
 
-    // CALL IMPORTED FUNCTION
-    @icall vector_add, array_a, array_b, array_c, COUNT
-                                                // Inline call hint to vector_add function
-                                                // Arguments:
-                                                //   vec_a = array_a (address of input A)
-                                                //   vec_b = array_b (address of input B)
-                                                //   vec_c = array_c (address of output C)
-                                                //   count = COUNT (number of blocks = 1)
-                                                // Computes: array_c = array_a + array_b
-                                                // Result: array_c = {11, 22, 33, 44, 55, 66, 77, 88}
+    ; LOAD DATA ADDRESSES (data symbols are address constants)
+    mov array_a, pa
+    mov array_b, pb
+    mov array_c, pc
 
-    @ret                                        // Return from main (program exit)
+    ; CALL IMPORTED FUNCTION
+    @icall vector_add, pa, pb, pc, COUNT
+                                                ; Inline call hint to vector_add function
+                                                ; Arguments:
+                                                ;   vec_a = pa (address of array_a)
+                                                ;   vec_b = pb (address of array_b)
+                                                ;   vec_c = pc (address of array_c)
+                                                ;   count = COUNT (number of blocks = 1)
+                                                ; Computes: array_c = array_a + array_b
+                                                ; Result: array_c = {11, 22, 33, 44, 55, 66, 77, 88}
+
+_halt:                                          ; @main does not return:
+    br _halt                                    ; finish with an idle loop
 }
 ```
 
@@ -627,10 +638,11 @@ loop: 1, 64                                      // Loop: process up to 64 vecto
 
 **Build Process**:
 
-1. Compile `vector_ops.lan` → generates object with `vector_add` function
-2. Compile `main.lan` → generates object with `test_addition` function
-3. Link both objects → resolve `vector_add` reference in `main.lan`
-4. Generate final executable with entry point `test_addition`
+Compile the entry file only; LASM follows `@import` and builds the whole program in one invocation:
+
+```bash
+./tools/lasm main.lan --layout tools/potato.json --dce --licm --laems --fbbf --tdls --output main.s
+```
 
 **Program Execution Flow**:
 
@@ -645,7 +657,7 @@ Process 32 elements (1 block)
   ↓
 Return to test_addition
   ↓
-Program End
+Idle loop (_halt)
 ```
 
 **Expected Result**:
@@ -677,7 +689,7 @@ HANDLE_REGISTER(VR, 64, 0, 63, 0, 15, 0, 1)  // Vector registers: VR0-VR63 (64-b
 Defines execution units and their grouping for VLIW instruction packing:
 
 ```c
-#define _TARGET_CFG   6  // 6-issue VLIW configuration
+#define _TARGET_CFG   6  // Default configuration: 15 functional units
 
 HANDLE_FUNIT(A1, 0, .A1, 1)  // Group 0: Scalar load/store
 HANDLE_FUNIT(A2, 0, .A2, 1)
@@ -692,7 +704,7 @@ HANDLE_FUNIT(E8, 4, .E8, 1)
 ```
 
 **Format**: `HANDLE_FUNIT(unit_name, group_id, text_suffix, enabled)`
-- **group_id**: Units in the same group compete for resources (only one can execute per cycle)
+- **group_id**: Functional group; units in the same group serve the same class of instructions
 - **_TARGET_CFG**: Determines how many functional units are active
 
 ### Instruction Set (`machine/instruct`)
@@ -735,16 +747,15 @@ Use this to enforce:
 
 ## LAN Assembly Language
 
-The **LAN (LASM Assembly Notation)** language is a symbolic assembly language designed for VLIW processors. It supports:
+The **LAN (VLIW Assembly Notation)** language is a symbolic assembly language designed for VLIW processors. It supports:
 
 - **Symbolic variables**: Automatic register allocation
 - **Explicit register assignment**: User-controlled allocation via `@asg`
 - **Loop annotations**: Iteration bounds for optimization hints
-- **Parallel execution**: `|||` separator for explicit parallelism
-- **Cycle boundaries**: `;;;` separator for VLIW instruction word boundaries
-- **Conditional execution**: Predicated instructions (e.g., `[r5] add 1, counter, counter`)
+- **Parallel execution**: `|` prefix for explicit parallelism
+- **Conditional execution**: Predicated instructions (e.g., `[R5] add 1, counter, counter`)
 - **Addressing modes**: Post-increment, pre-increment, offset registers
-- **Register groups**: Multi-register operands (e.g., `vr1:vr0`)
+- **Register groups**: Multi-register operands (e.g., `VR1:VR0`)
 
 ### LAN Syntax Reference
 
@@ -772,20 +783,22 @@ Defines memory layout and calling convention for the Potato processor:
     ".vstk": ["0x002100B0000", "0x002100BFFFF", 36],  // Vector stack (64KB)
     ".sreg": ["0x0021011EF80", "0x0021011EFFF", 36],  // Scalar register save area
     ".vreg": ["0x002100AFC00", "0x002100AFFFF", 36],  // Vector register save area
-    ".text@ro|.rodata@ro|.data": ["0x00200000000", "0x002007FFFFF", 36]  // Code/data (16MB)
+    ".text@ro|.rodata@ro|.data|.bss": ["0x00200000000", "0x002007FFFFF", 36]  // Code/data (16MB)
   },
   "VALPASS": {
     "RETA": ["R63"],           // Return address register
     "DATA": ["R10", ..., "R25"], // Argument passing registers
     "SSTK": ["AR15"],          // Scalar stack pointer
-    "VSTK": ["AR7"]            // Vector stack pointer
+    "VSTK": ["AR7"],           // Vector stack pointer
+    "SREG": ["AR13"],          // Scalar spill-area pointer
+    "VREG": ["AR5"]            // Vector spill-area pointer
   }
 }
 ```
 
 **Format**:
 - **SEGMENT**: Memory regions with [start_address, end_address, address_width]
-- **VALPASS**: Registers reserved for calling convention (return address, arguments, stack pointers)
+- **VALPASS**: Calling-convention registers (return address, arguments, stack and spill-area pointers)
 
 ---
 
@@ -806,7 +819,7 @@ Scalar matrix multiplication (C = A × B) demonstrating basic LAN features:
 Vector GEMM using separate `vmul` and `vadd` instructions:
 - Vector register pairs (handle 32 FP32 elements)
 - Broadcasting (scalar to vector)
-- Explicit pipeline control with `;;;` separators
+- `;;;` comments as visual separators
 - Demonstrates higher register pressure (needs temp registers)
 
 **Compile**: `./tools/lasm lan4test/sgemm_vector_mul_and_add.lan --layout tools/potato.json --laems --ec=0-8 --output sgemm_mul_add.s`
@@ -827,34 +840,4 @@ Optimized vector GEMM using fused `vmuladd` instruction:
 |---------|----------------------|-------------------|---------|
 | `sgemm_vector_mul_and_add.lan` | 4 arithmetic ops | Higher (needs t0, t1) | 2× (mul + add) |
 | `sgemm_vector_muladd.lan` | 2 arithmetic ops | Lower (no temps) | 1× (fused) |
-
----
-
-## Extending LASM for Your Architecture
-
-To adapt this example for your own VLIW processor:
-
-1. **Define Register File** (`machine/register`):
-   - Specify all register types, widths, and counts
-   - Set allocatable flag for compiler-managed registers
-
-2. **Configure Functional Units** (`machine/funit`):
-   - List all execution units and their group assignments
-   - Adjust `_TARGET_CFG` for different VLIW issue widths
-
-3. **Specify Instruction Set** (`machine/instruct`):
-   - Define each instruction's operand types, latencies, and FU bindings
-   - Include algebraic rules for optimization opportunities
-
-4. **Set Constraints** (`machine/limits`):
-   - Enforce instruction packing restrictions
-   - Validate instruction word constraints
-
-5. **Update Configuration** (`tools/potato.json`):
-   - Define memory layout for your platform
-   - Specify calling convention registers
-
-6. **Test with Programs**:
-   - Write LAN assembly programs targeting your architecture
-   - Verify generated code meets architectural constraints
 
